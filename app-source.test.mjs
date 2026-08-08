@@ -23,6 +23,8 @@ test("keeps material and schedule entry inside the app", async () => {
 
   assert.match(source, /const appName = "受験伴走システム"/);
   assert.match(source, /storageKey = "jukenbanso-system-v1"/);
+  assert.match(source, /themeKey = "jukenbanso-background-theme-v1"/);
+  assert.match(source, /backgroundThemes/);
   assert.match(source, /window\.localStorage\.setItem/);
   assert.match(source, /教材追加/);
   assert.match(source, /生活時間/);
@@ -32,6 +34,16 @@ test("keeps material and schedule entry inside the app", async () => {
   assert.match(source, /\/api\/device\/create/);
   assert.match(source, /\/api\/device\/open/);
   assert.match(source, /\/api\/sync/);
+});
+
+test("static preview offers local background color choices", async () => {
+  const html = await readFile(new URL("../docs/index.html", import.meta.url), "utf8");
+
+  assert.match(html, /jukenbanso-background-theme-v1/);
+  assert.match(html, /data-theme-choice="mint"/);
+  assert.match(html, /data-theme-choice="sky"/);
+  assert.match(html, /data-theme-choice="lavender"/);
+  assert.match(html, /data-theme-choice="warm"/);
 });
 
 test("configures D1-backed personal-code sync", async () => {

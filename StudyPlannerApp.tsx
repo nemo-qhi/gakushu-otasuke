@@ -7,6 +7,7 @@ import { sampleInput } from "@/lib/sampleData.mjs";
 
 type Context = "mobile" | "desk" | "either";
 type FocusLevel = "low" | "medium" | "high";
+type BackgroundTheme = "paper" | "mint" | "sky" | "lavender" | "warm";
 
 type Material = {
   id: string;
@@ -75,8 +76,17 @@ const storageKey = "jukenbanso-system-v1";
 const clientIdKey = "jukenbanso-client-id-v1";
 const personalCodeKey = "jukenbanso-personal-code-v1";
 const revisionKey = "jukenbanso-sync-revision-v1";
+const themeKey = "jukenbanso-background-theme-v1";
 const appName = "受験伴走システム";
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+const backgroundThemes: { id: BackgroundTheme; label: string }[] = [
+  { id: "paper", label: "標準" },
+  { id: "mint", label: "若葉" },
+  { id: "sky", label: "薄空" },
+  { id: "lavender", label: "藤" },
+  { id: "warm", label: "生成" },
+];
 
 const seedInput = sampleInput as PlannerInput;
 
@@ -95,11 +105,19 @@ export function StudyPlannerApp() {
   );
   const [codeInput, setCodeInput] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [backgroundTheme, setBackgroundTheme] = useState<BackgroundTheme>(() =>
+    getStoredTheme(),
+  );
   const [syncStatus, setSyncStatus] = useState("端末内に保存しています。");
 
   useEffect(() => {
     window.localStorage.setItem(storageKey, JSON.stringify(planner));
   }, [planner]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = backgroundTheme;
+    window.localStorage.setItem(themeKey, backgroundTheme);
+  }, [backgroundTheme]);
 
   const result = useMemo(() => planStudy(planner), [planner]);
   const plannedTasks = result.tasks.filter((task: PlannerTask) => task.status === "planned");
@@ -269,6 +287,27 @@ export function StudyPlannerApp() {
           生活時間
         </button>
       </nav>
+
+      <section className="theme-panel" aria-label="Background color">
+        <div>
+          <p className="eyebrow">Color</p>
+          <h2>背景カラー</h2>
+        </div>
+        <div className="theme-options">
+          {backgroundThemes.map((theme) => (
+            <button
+              aria-pressed={backgroundTheme === theme.id}
+              className={backgroundTheme === theme.id ? "active" : ""}
+              key={theme.id}
+              onClick={() => setBackgroundTheme(theme.id)}
+              type="button"
+            >
+              <span className={`theme-swatch theme-swatch-${theme.id}`} />
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="account-panel" aria-label="Personal code sync">
         <div>
@@ -690,6 +729,15 @@ function createId(prefix: string) {
 function getStoredValue(key: string) {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(key) ?? "";
+}
+
+function getStoredTheme(): BackgroundTheme {
+  if (typeof window === "undefined") return "paper";
+
+  const stored = window.localStorage.getItem(themeKey);
+  return backgroundThemes.some((theme) => theme.id === stored)
+    ? (stored as BackgroundTheme)
+    : "paper";
 }
 
 function getOrCreateClientId() {
