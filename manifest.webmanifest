@@ -1,0 +1,10 @@
+{
+  "id": "/",
+  "name": "受験伴走システム",
+  "short_name": "受験伴走",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8f5",
+  "theme_color": "#f7f8f5",
+  "orientation": "portrait"
+}
