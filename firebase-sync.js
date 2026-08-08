@@ -24,7 +24,6 @@ const db = getFirestore(app);
 const collectionName = "jukenbansoSpaces";
 const storedCodeKey = "jukenbanso-cloud-personal-code-v1";
 const syncInput = document.getElementById("personal-code-input");
-const createButton = document.getElementById("create-cloud-code");
 const openButton = document.getElementById("open-cloud-code");
 const saveButton = document.getElementById("save-cloud-code");
 
@@ -36,7 +35,12 @@ let lastSavedBody = "";
 
 if (activeCode) syncInput.value = formatPersonalCode(activeCode);
 
-createButton.addEventListener("click", createCloudCodeImproved);
+window.addEventListener("jukenbanso:cloud-code-created", (event) => {
+  createCloudCodeImproved(event.detail?.code).catch((error) => {
+    console.error(error);
+    setStatus("個人コードは作成しましたが、オンライン保存に失敗しました。「今すぐ同期」で再試行してください。");
+  });
+});
 openButton.addEventListener("click", () => openCloudCode(syncInput.value));
 saveButton.addEventListener("click", () => saveCloudSnapshot({ force: true }));
 window.addEventListener("jukenbanso:planner-saved", scheduleCloudSave);
@@ -91,8 +95,8 @@ async function createCloudCode() {
   }
 }
 
-async function createCloudCodeImproved() {
-  const code = generatePersonalCode();
+async function createCloudCodeImproved(existingCode = "") {
+  const code = normalizePersonalCode(existingCode) || generatePersonalCode();
   const formattedCode = formatPersonalCode(code);
   syncInput.value = formattedCode;
   syncInput.select();

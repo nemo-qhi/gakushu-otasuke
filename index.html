@@ -1303,6 +1303,39 @@
         if (button) applyTheme(button.dataset.themeChoice);
       });
 
+      function normalizeCloudCode(code) {
+        return String(code ?? "").normalize("NFKC").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      }
+
+      function formatCloudCode(code) {
+        const normalized = normalizeCloudCode(code);
+        if (normalized.startsWith("JKB") && normalized.length === 11) {
+          return `${normalized.slice(0, 3)}-${normalized.slice(3, 7)}-${normalized.slice(7, 11)}`;
+        }
+        return normalized;
+      }
+
+      function generateCloudCode() {
+        const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const values = crypto.getRandomValues(new Uint32Array(8));
+        let body = "";
+        for (const value of values) body += alphabet[value % alphabet.length];
+        return `JKB${body}`;
+      }
+
+      function createCloudCodeImmediately() {
+        const code = generateCloudCode();
+        const formatted = formatCloudCode(code);
+        const input = document.getElementById("personal-code-input");
+        input.value = formatted;
+        input.focus();
+        input.select();
+        setTransferStatus(`個人コード ${formatted} を作成しました。オンライン保存を試しています。`);
+        window.dispatchEvent(new CustomEvent("jukenbanso:cloud-code-created", { detail: { code } }));
+      }
+
+      document.getElementById("create-cloud-code").addEventListener("click", createCloudCodeImmediately);
+
       window.jukenbansoApp = {
         getPlanner: () => structuredClone(planner),
         setPlanner(nextPlanner) {
