@@ -1,0 +1,1355 @@
+﻿<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f8f5" />
+    <title>受験伴走システム</title>
+    <style>
+      :root {
+        --background: #f7f8f5;
+        --foreground: #17201d;
+        --muted: #68736d;
+        --line: #dce2dc;
+        --panel: #ffffff;
+        --blue: #2f68bd;
+        --green: #2d7f5e;
+        --amber: #a66418;
+        --slate: #5b6670;
+        --soft: #edf1ed;
+        --input: #fbfcfa;
+        --chip: #e9efe9;
+        --focus: rgba(47, 104, 189, 0.22);
+      }
+
+      :root[data-theme="mint"] {
+        --background: #f0f7ef;
+        --foreground: #15251b;
+        --muted: #627369;
+        --line: #d4e2d4;
+        --panel: #fefffc;
+        --soft: #e7f0e6;
+        --input: #fbfdf8;
+        --chip: #dfeade;
+      }
+
+      :root[data-theme="sky"] {
+        --background: #f1f6fa;
+        --foreground: #14212c;
+        --muted: #60707e;
+        --line: #d5e1ea;
+        --panel: #ffffff;
+        --soft: #e6eef5;
+        --input: #fbfdff;
+        --chip: #dfeaf3;
+      }
+
+      :root[data-theme="lavender"] {
+        --background: #f6f3f9;
+        --foreground: #231b2b;
+        --muted: #70677a;
+        --line: #e2d9ea;
+        --panel: #fffefe;
+        --soft: #eee8f3;
+        --input: #fffaff;
+        --chip: #e7e0ee;
+      }
+
+      :root[data-theme="warm"] {
+        --background: #f8f5ed;
+        --foreground: #251f16;
+        --muted: #756d5d;
+        --line: #e4ddcc;
+        --panel: #fffefa;
+        --soft: #f0eadc;
+        --input: #fffdf7;
+        --chip: #ebe4d5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--background);
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100dvh;
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: "UDデジタル教科書体 NP-R", "UD デジタル 教科書体 NP-R", "UD Digi Kyokasho NP-R", "Yu Gothic", "Hiragino Sans", "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        font-size: 16px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        overflow-wrap: anywhere;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 48px;
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.25;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 4px 0;
+        font-size: 17px;
+        line-height: 1.3;
+        letter-spacing: 0;
+      }
+
+      .shell {
+        width: min(100%, 1040px);
+        margin: 0 auto;
+        padding: calc(18px + env(safe-area-inset-top)) 16px
+          calc(28px + env(safe-area-inset-bottom));
+      }
+
+      .topbar,
+      .today-band {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .topbar {
+        min-height: 86px;
+      }
+
+      .eyebrow {
+        margin: 0 0 4px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .sync-pill {
+        flex: 0 0 auto;
+        min-height: 44px;
+        padding: 11px 14px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .segmented {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        margin: 4px 0 18px;
+        padding: 5px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .segmented button {
+        min-height: 44px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .segmented button.active {
+        background: var(--panel);
+        color: var(--foreground);
+        box-shadow: 0 1px 4px rgba(24, 32, 28, 0.08);
+      }
+
+      .theme-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .theme-options {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .theme-options button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        gap: 7px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--input);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .theme-options button.active {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px var(--focus);
+      }
+
+      .theme-swatch {
+        width: 16px;
+        height: 16px;
+        border: 1px solid rgba(23, 32, 29, 0.18);
+        border-radius: 999px;
+      }
+
+      .theme-swatch-paper {
+        background: #f7f8f5;
+      }
+
+      .theme-swatch-mint {
+        background: #dfeade;
+      }
+
+      .theme-swatch-sky {
+        background: #dfeaf3;
+      }
+
+      .theme-swatch-lavender {
+        background: #e7e0ee;
+      }
+
+      .theme-swatch-warm {
+        background: #ebe4d5;
+      }
+
+      .transfer-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+        gap: 12px;
+        align-items: start;
+        margin-bottom: 18px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .transfer-panel p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .transfer-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 112px;
+        gap: 8px;
+        align-items: end;
+      }
+
+      .transfer-actions label {
+        grid-column: 1 / -1;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 10px 0 18px;
+      }
+
+      .metric {
+        min-height: 104px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .metric span,
+      .metric strong {
+        display: block;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .metric strong {
+        margin-top: 14px;
+        font-size: 28px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .metric-blue {
+        border-top: 4px solid var(--blue);
+      }
+
+      .metric-green {
+        border-top: 4px solid var(--green);
+      }
+
+      .metric-amber {
+        border-top: 4px solid var(--amber);
+      }
+
+      .metric-slate {
+        border-top: 4px solid var(--slate);
+      }
+
+      .today-band {
+        min-height: 74px;
+        margin-top: 8px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .today-band span {
+        color: var(--muted);
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .task-list {
+        display: grid;
+        gap: 10px;
+        margin: 18px 0;
+      }
+
+      .task-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(190px, 0.42fr);
+        gap: 14px;
+        align-items: center;
+        min-height: 112px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .subject {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: var(--chip);
+        color: #26342e;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .task-main p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .thresholds {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .thresholds span {
+        min-height: 44px;
+        padding: 11px 8px;
+        border-radius: 7px;
+        background: var(--soft);
+        color: #25312c;
+        font-size: 13px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .two-column,
+      .form-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 0.78fr);
+        gap: 12px;
+        align-items: start;
+      }
+
+      .panel,
+      .entry-form {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .panel {
+        min-height: 220px;
+      }
+
+      .entry-form {
+        display: grid;
+        gap: 14px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--input);
+        color: var(--foreground);
+        padding: 10px 11px;
+      }
+
+      textarea {
+        min-height: 118px;
+        resize: vertical;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus,
+      button:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        min-height: 46px;
+        gap: 10px;
+        padding-top: 22px;
+      }
+
+      .check-row input {
+        width: 22px;
+        min-height: 22px;
+      }
+
+      .primary-action,
+      .secondary-action {
+        min-height: 48px;
+        border-radius: 7px;
+        font-weight: 900;
+      }
+
+      .primary-action {
+        border: 0;
+        background: var(--blue);
+        color: #ffffff;
+      }
+
+      .secondary-action {
+        border: 1px solid var(--line);
+        background: var(--soft);
+        color: var(--foreground);
+      }
+
+      .bars {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: 70px minmax(0, 1fr) 54px;
+        gap: 10px;
+        align-items: center;
+        min-height: 28px;
+        font-size: 13px;
+      }
+
+      .bar-row div {
+        height: 9px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--chip);
+      }
+
+      .bar-row i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #2f68bd, #2d7f5e);
+      }
+
+      .bar-row b {
+        color: var(--muted);
+        font-weight: 700;
+        text-align: right;
+      }
+
+      .quiet,
+      .warning-list {
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .warning-list {
+        padding-left: 18px;
+      }
+
+      .compact-list {
+        display: grid;
+        gap: 9px;
+        margin-top: 16px;
+      }
+
+      .compact-list div {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) 86px;
+        gap: 10px;
+        align-items: center;
+        min-height: 48px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .compact-list b {
+        font-size: 13px;
+      }
+
+      .compact-list span,
+      .compact-list small {
+        overflow-wrap: anywhere;
+      }
+
+      .compact-list span {
+        font-size: 14px;
+      }
+
+      .compact-list small {
+        color: var(--muted);
+        font-size: 12px;
+        text-align: right;
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          padding-right: 12px;
+          padding-left: 12px;
+        }
+
+        .summary-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .metric {
+          min-height: 94px;
+        }
+
+        .task-card,
+        .two-column,
+        .form-layout,
+        .theme-panel,
+        .transfer-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .theme-options {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .thresholds {
+          grid-template-columns: repeat(3, minmax(74px, 1fr));
+        }
+
+        .today-band {
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          padding: 14px 0;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+          min-height: 120px;
+          justify-content: center;
+        }
+
+        .segmented,
+        .theme-options,
+        .transfer-actions,
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .transfer-actions label {
+          grid-column: auto;
+        }
+
+        .summary-grid {
+          gap: 8px;
+        }
+
+        .metric {
+          padding: 12px;
+        }
+
+        .metric strong {
+          font-size: 24px;
+        }
+
+        h1 {
+          font-size: 32px;
+        }
+
+        .thresholds {
+          grid-template-columns: 1fr;
+        }
+
+        .bar-row {
+          grid-template-columns: 62px minmax(0, 1fr) 48px;
+        }
+
+        .compact-list div {
+          grid-template-columns: 48px minmax(0, 1fr);
+        }
+
+        .compact-list small {
+          grid-column: 2;
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="Application summary">
+        <div>
+          <p class="eyebrow">Prototype</p>
+          <h1>受験伴走システム</h1>
+        </div>
+        <div class="sync-pill">コード引き継ぎ</div>
+      </section>
+
+      <nav class="segmented" aria-label="Primary views">
+        <button class="active" type="button" data-panel="today">今日</button>
+        <button type="button" data-panel="materials">教材追加</button>
+        <button type="button" data-panel="schedule">生活時間</button>
+      </nav>
+
+      <section class="theme-panel" aria-label="背景カラー">
+        <div>
+          <p class="eyebrow">Color</p>
+          <h2>背景カラー</h2>
+        </div>
+        <div class="theme-options" id="theme-options">
+          <button class="active" type="button" data-theme-choice="paper"><span class="theme-swatch theme-swatch-paper"></span>標準</button>
+          <button type="button" data-theme-choice="mint"><span class="theme-swatch theme-swatch-mint"></span>若葉</button>
+          <button type="button" data-theme-choice="sky"><span class="theme-swatch theme-swatch-sky"></span>薄空</button>
+          <button type="button" data-theme-choice="lavender"><span class="theme-swatch theme-swatch-lavender"></span>藤</button>
+          <button type="button" data-theme-choice="warm"><span class="theme-swatch theme-swatch-warm"></span>生成</button>
+        </div>
+      </section>
+
+      <section class="transfer-panel" aria-label="個人コード同期">
+        <div>
+          <p class="eyebrow">Sync</p>
+          <h2>個人コードで同期</h2>
+          <p id="transfer-status">個人コードを作成、または既存コードを開くと、この端末の変更が同じコードの保存箱へ同期されます。</p>
+        </div>
+        <div class="transfer-actions">
+          <button class="primary-action" type="button" id="create-cloud-code">個人コードを生成</button>
+          <button class="secondary-action" type="button" id="save-cloud-code">今すぐ同期</button>
+          <label>
+            個人コード
+            <input id="personal-code-input" autocomplete="off" placeholder="JKB-XXXX-XXXX" />
+          </label>
+          <button class="secondary-action" type="button" id="open-cloud-code">コードを開く</button>
+        </div>
+      </section>
+
+      <section id="today-panel"></section>
+
+      <section id="materials-panel" class="form-layout" hidden>
+        <form class="entry-form" id="material-form">
+          <div>
+            <p class="eyebrow">Material</p>
+            <h2>教材を追加</h2>
+          </div>
+          <label>科目<input name="subject" placeholder="英語" required /></label>
+          <label>教材名<input name="name" placeholder="英単語ターゲット" required /></label>
+          <div class="form-grid">
+            <label>フェーズ<input name="phase" value="初見" required /></label>
+            <label>
+              単位
+              <select name="unitType">
+                <option>題</option>
+                <option>ページ</option>
+                <option>語</option>
+                <option>セット</option>
+                <option>回</option>
+              </select>
+            </label>
+            <label>現在位置<input name="currentValue" value="1" min="0" type="number" required /></label>
+            <label>終了位置<input name="endValue" value="40" min="1" type="number" required /></label>
+            <label>開始位置<input name="startValue" value="1" min="0" type="number" required /></label>
+            <label>期限<input name="deadline" value="2026-08-31" type="date" required /></label>
+            <label>科目優先度<input name="subjectPriority" value="4" max="5" min="1" type="number" /></label>
+            <label>教材優先度<input name="materialPriority" value="4" max="5" min="1" type="number" /></label>
+            <label>
+              場所
+              <select name="context">
+                <option value="mobile">通学</option>
+                <option value="desk" selected>机</option>
+                <option value="either">どちらでも可</option>
+              </select>
+            </label>
+            <label>最小分割量<input name="minChunk" value="2" min="0.1" step="0.1" type="number" /></label>
+            <label>分 / 単位<input name="minutesPerUnit" value="10" min="0.1" step="0.1" type="number" /></label>
+          </div>
+          <button class="primary-action" type="submit">追加して再計算</button>
+        </form>
+
+        <div class="panel">
+          <h2>登録済み教材</h2>
+          <div class="compact-list" id="material-list"></div>
+        </div>
+      </section>
+
+      <section id="schedule-panel" class="form-layout" hidden>
+        <div class="entry-form">
+          <div>
+            <p class="eyebrow">Life</p>
+            <h2>生活時間</h2>
+          </div>
+          <div class="form-grid">
+            <label>ソフト終了<input id="soft-end" type="time" /></label>
+            <label>ハード停止<input id="hard-stop" type="time" /></label>
+          </div>
+          <button class="secondary-action" type="button" id="reset-button">架空データへ戻す</button>
+        </div>
+
+        <form class="entry-form" id="schedule-form">
+          <div>
+            <p class="eyebrow">Study Block</p>
+            <h2>学習枠を追加</h2>
+          </div>
+          <label>ラベル<input name="label" placeholder="帰宅後" required /></label>
+          <div class="form-grid">
+            <label>
+              曜日
+              <select name="weekday">
+                <option value="0">日</option>
+                <option value="1" selected>月</option>
+                <option value="2">火</option>
+                <option value="3">水</option>
+                <option value="4">木</option>
+                <option value="5">金</option>
+                <option value="6">土</option>
+              </select>
+            </label>
+            <label>開始<input name="startTime" type="time" value="19:00" required /></label>
+            <label>終了<input name="endTime" type="time" value="21:00" required /></label>
+            <label>
+              場所
+              <select name="context">
+                <option value="mobile">通学</option>
+                <option value="desk" selected>机</option>
+                <option value="either">どちらでも可</option>
+              </select>
+            </label>
+            <label>
+              集中度
+              <select name="focusLevel">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+              </select>
+            </label>
+            <label class="check-row"><input name="extendable" type="checkbox" />延長可</label>
+          </div>
+          <button class="primary-action" type="submit">追加して再計算</button>
+        </form>
+
+        <div class="panel">
+          <h2>登録済み学習枠</h2>
+          <div class="compact-list" id="schedule-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const storageKey = "jukenbanso-system-static-v1";
+      const themeKey = "jukenbanso-background-theme-v1";
+      const themeIds = ["paper", "mint", "sky", "lavender", "warm"];
+      const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+      const seedInput = {
+        today: "2026-08-10",
+        planningDays: 7,
+        settings: {
+          planningBufferRatio: 0.8,
+          softEndTime: "21:30",
+          hardStopTime: "22:20",
+          nearStartLockMinutes: 30
+        },
+        scheduleTemplates: [],
+        exceptions: [],
+        materials: [],
+        existingTasks: []
+      };
+
+      let planner = loadPlanner();
+      applyTheme(loadTheme());
+
+      function loadTheme() {
+        const saved = localStorage.getItem(themeKey);
+        return themeIds.includes(saved) ? saved : "paper";
+      }
+
+      function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem(themeKey, theme);
+        document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+          const active = button.dataset.themeChoice === theme;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+        window.dispatchEvent(new CustomEvent("jukenbanso:theme-saved"));
+      }
+
+      function setTransferStatus(message) {
+        document.getElementById("transfer-status").textContent = message;
+      }
+
+      function encodeTransferCode() {
+        const payload = {
+          version: 1,
+          app: "jukenbanso",
+          exportedAt: new Date().toISOString(),
+          theme: loadTheme(),
+          planner
+        };
+        const json = JSON.stringify(payload);
+        const bytes = new TextEncoder().encode(json);
+        let binary = "";
+        for (let index = 0; index < bytes.length; index += 0x8000) {
+          binary += String.fromCharCode(...bytes.slice(index, index + 0x8000));
+        }
+        return `JB1-${btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/u, "")}`;
+      }
+
+      function decodeTransferCode(rawCode) {
+        const compact = rawCode.trim().replace(/^JB1-/iu, "").replace(/\s+/gu, "");
+        if (!compact) throw new Error("コードが空です。");
+
+        const base64 = compact.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+        const binary = atob(padded);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        const payload = JSON.parse(new TextDecoder().decode(bytes));
+
+        if (payload?.app !== "jukenbanso" || payload?.version !== 1 || !payload?.planner) {
+          throw new Error("受験伴走システムの引き継ぎコードとして読み込めません。");
+        }
+        if (!Array.isArray(payload.planner.materials) || !Array.isArray(payload.planner.scheduleTemplates)) {
+          throw new Error("コードの中身が壊れているようです。");
+        }
+
+        return payload;
+      }
+
+      function loadPlanner() {
+        const saved = localStorage.getItem(storageKey);
+        return saved ? JSON.parse(saved) : structuredClone(seedInput);
+      }
+
+      function savePlanner() {
+        localStorage.setItem(storageKey, JSON.stringify(planner));
+        window.dispatchEvent(new CustomEvent("jukenbanso:planner-saved"));
+      }
+
+      function planStudy(input) {
+        const dates = Array.from({ length: input.planningDays || 7 }, (_, index) => addDays(input.today, index));
+        const immutableTasks = input.existingTasks.filter((task) => task.locked || task.status === "closed" || task.status === "in_progress");
+        const usedRanges = new Map();
+        for (const task of immutableTasks) addRange(usedRanges, task.materialId, task.rangeStart, task.rangeEnd);
+        const cursors = new Map(input.materials.map((material) => [material.id, material.currentValue]));
+        const generated = [];
+        const taskIndex = new Map();
+        const blocksByDate = new Map();
+        const warnings = [];
+
+        for (const date of dates) {
+          blocksByDate.set(date, availableBlocks(input, date));
+        }
+
+        for (const material of input.materials.filter((item) => item.active !== false)) {
+          const capacity = dates
+            .filter((date) => date <= material.deadline)
+            .flatMap((date) => blocksByDate.get(date) || [])
+            .filter((block) => contextFits(material.context, block.context))
+            .reduce((sum, block) => sum + block.minutes, 0);
+          const required = Math.max(0, material.endValue - material.currentValue) * minutesPerUnit(material) * 0.65;
+          if (required > capacity) {
+            warnings.push({ code: "infeasible_deadline", materialId: material.id, message: `${material.name} は期限までに収まりにくい見込みです。` });
+          }
+        }
+
+        for (const date of dates) {
+          for (const phase of ["minimum", "standard", "extra"]) {
+            const touched = new Set();
+            for (const block of blocksByDate.get(date) || []) {
+              const limit = phase === "extra" ? block.minutes : Math.floor(block.minutes * input.settings.planningBufferRatio);
+              while (block.usedMinutes < limit) {
+                const material = chooseMaterial(input.materials, cursors, usedRanges, date, block, phase, touched);
+                if (!material) break;
+                const qty = Math.min(material.minChunk, material.endValue - cursors.get(material.id));
+                const minutes = qty * minutesPerUnit(material);
+                if (minutes <= 0 || block.usedMinutes + minutes > block.minutes) break;
+                const range = nextRange(material, qty, cursors, usedRanges);
+                if (!range) {
+                  touched.add(`${phase}:${material.id}`);
+                  continue;
+                }
+                const task = addTask(generated, taskIndex, date, block, material, phase, range, qty, minutes);
+                block.usedMinutes += minutes;
+                cursors.set(material.id, range.end);
+                addRange(usedRanges, material.id, range.start, range.end);
+                touched.add(`${phase}:${material.id}`);
+              }
+            }
+          }
+        }
+
+        const tasks = [...immutableTasks, ...generated].sort((a, b) => `${a.date}:${a.materialId}`.localeCompare(`${b.date}:${b.materialId}`));
+        return {
+          tasks,
+          changedTaskCount: generated.length,
+          warnings,
+          schedulerRevision: revision(tasks, warnings),
+          summary: {
+            plannedMinutes: Math.round(generated.reduce((sum, task) => sum + task.estimatedMinutes, 0))
+          }
+        };
+      }
+
+      function availableBlocks(input, date) {
+        const weekday = new Date(`${date}T00:00:00`).getDay();
+        const hardStop = hardStopFor(input, date);
+        let blocks = input.scheduleTemplates
+          .filter((template) => template.active !== false && template.weekday === weekday)
+          .map((template) => {
+            const startAt = timestamp(date, template.startTime);
+            const endAt = Math.min(timestamp(date, template.endTime), timestamp(date, hardStop));
+            return {
+              id: `${date}:${template.id}`,
+              date,
+              label: template.label,
+              context: template.context,
+              focusLevel: template.focusLevel,
+              startAt,
+              endAt,
+              minutes: Math.max(0, (endAt - startAt) / 60000),
+              usedMinutes: 0
+            };
+          })
+          .filter((block) => block.minutes > 0);
+
+        for (const exception of input.exceptions.filter((item) => item.date === date)) {
+          if (exception.type === "capacity_delta" && exception.deltaMinutes < 0) {
+            let remaining = Math.abs(exception.deltaMinutes);
+            blocks = blocks
+              .sort((a, b) => b.endAt - a.endAt)
+              .map((block) => {
+                if (remaining <= 0) return block;
+                const cut = Math.min(block.minutes, remaining);
+                remaining -= cut;
+                block.endAt -= cut * 60000;
+                block.minutes = Math.max(0, (block.endAt - block.startAt) / 60000);
+                return block;
+              })
+              .filter((block) => block.minutes > 0)
+              .sort((a, b) => a.startAt - b.startAt);
+          }
+        }
+        return blocks;
+      }
+
+      function chooseMaterial(materials, cursors, usedRanges, date, block, phase, touched) {
+        return materials
+          .filter((material) => material.active !== false)
+          .filter((material) => cursors.get(material.id) < material.endValue)
+          .filter((material) => contextFits(material.context, block.context))
+          .filter((material) => !touched.has(`${phase}:${material.id}`))
+          .filter((material) => nextRange(material, material.minChunk, cursors, usedRanges))
+          .sort((a, b) => score(b, date, block) - score(a, date, block))[0] || null;
+      }
+
+      function addTask(generated, taskIndex, date, block, material, phase, range, qty, minutes) {
+        const key = `${date}:${block.id}:${material.id}`;
+        let task = taskIndex.get(key);
+        if (!task) {
+          task = {
+            id: `planned:${key}`,
+            date,
+            slotId: block.id,
+            materialId: material.id,
+            materialName: material.name,
+            subject: material.subject,
+            rangeStart: range.start,
+            rangeEnd: range.end,
+            unitType: material.unitType,
+            minimumQty: 0,
+            standardQty: 0,
+            extraQty: 0,
+            estimatedMinutes: 0,
+            status: "planned",
+            locked: false
+          };
+          taskIndex.set(key, task);
+          generated.push(task);
+        }
+        task.rangeEnd = Math.max(task.rangeEnd, range.end);
+        if (phase === "minimum") {
+          task.minimumQty += qty;
+          task.standardQty = Math.max(task.standardQty, task.minimumQty);
+          task.extraQty = Math.max(task.extraQty, task.standardQty);
+        }
+        if (phase === "standard") {
+          task.standardQty += qty;
+          task.extraQty = Math.max(task.extraQty, task.standardQty);
+        }
+        if (phase === "extra") task.extraQty += qty;
+        task.estimatedMinutes += minutes;
+        return task;
+      }
+
+      function nextRange(material, qty, cursors, usedRanges) {
+        let start = cursors.get(material.id) || material.currentValue;
+        const ranges = usedRanges.get(material.id) || [];
+        while (start < material.endValue) {
+          const end = Math.min(material.endValue, start + qty);
+          const conflict = ranges.find((range) => start < range.end && end > range.start);
+          if (!conflict) return { start, end };
+          start = conflict.end;
+        }
+        return null;
+      }
+
+      function score(material, date, block) {
+        const daysLeft = Math.max(0, daysBetween(date, material.deadline));
+        const deadline = Math.max(0, 42 - daysLeft * 6);
+        const fit = material.context === block.context ? 14 : 5;
+        return material.subjectPriority * 12 + material.materialPriority * 8 + deadline + fit;
+      }
+
+      function render() {
+        const result = planStudy(planner);
+        const plannedTasks = result.tasks.filter((task) => task.status === "planned");
+        const lockedTasks = result.tasks.filter((task) => task.locked);
+        const subjectMinutes = {};
+        for (const task of plannedTasks) {
+          subjectMinutes[task.subject] = (subjectMinutes[task.subject] || 0) + task.estimatedMinutes;
+        }
+
+        document.getElementById("soft-end").value = planner.settings.softEndTime;
+        document.getElementById("hard-stop").value = planner.settings.hardStopTime;
+        document.getElementById("today-panel").innerHTML = `
+          <section class="summary-grid" aria-label="Scheduler result">
+            ${metric("変更件数", `${result.changedTaskCount}件`, "blue")}
+            ${metric("予定時間", `${result.summary.plannedMinutes}分`, "green")}
+            ${metric("警告", `${result.warnings.length}件`, "amber")}
+            ${metric("固定保持", `${lockedTasks.length}件`, "slate")}
+          </section>
+          <section class="today-band">
+            <div><p class="eyebrow">Today</p><h2>今日以降の自動配分</h2></div>
+            <span>rev ${result.schedulerRevision}</span>
+          </section>
+          <section class="task-list" aria-label="Planned tasks">
+            ${plannedTasks.slice(0, 10).map(taskCard).join("")}
+          </section>
+          <section class="two-column">
+            <div class="panel"><h2>科目別予定時間</h2><div class="bars">
+              ${Object.entries(subjectMinutes).map(([subject, minutes]) => `
+                <div class="bar-row"><span>${escapeHtml(subject)}</span><div><i style="width:${Math.min(100, minutes)}%"></i></div><b>${Math.round(minutes)}分</b></div>
+              `).join("")}
+            </div></div>
+            <div class="panel"><h2>検出された警告</h2>
+              ${result.warnings.length === 0 ? `<p class="quiet">実現困難な教材はありません。</p>` : `<ul class="warning-list">${result.warnings.map((warning) => `<li>${escapeHtml(warning.message)}</li>`).join("")}</ul>`}
+            </div>
+          </section>
+        `;
+
+        document.getElementById("material-list").innerHTML = planner.materials.map((material) => `
+          <div><b>${escapeHtml(material.subject)}</b><span>${escapeHtml(material.name)}</span><small>${material.currentValue}〜${material.endValue}${escapeHtml(material.unitType)}</small></div>
+        `).join("");
+
+        document.getElementById("schedule-list").innerHTML = planner.scheduleTemplates.map((block) => `
+          <div><b>${weekdays[block.weekday]}曜</b><span>${escapeHtml(block.label)}</span><small>${block.startTime}〜${block.endTime}</small></div>
+        `).join("");
+      }
+
+      function metric(label, value, tone) {
+        return `<div class="metric metric-${tone}"><span>${label}</span><strong>${value}</strong></div>`;
+      }
+
+      function taskCard(task) {
+        return `
+          <article class="task-card">
+            <div class="task-main">
+              <span class="subject">${escapeHtml(task.subject)}</span>
+              <h3>${escapeHtml(task.materialName)}</h3>
+              <p>${task.rangeStart}〜${task.rangeEnd}${escapeHtml(task.unitType)} / ${Math.round(task.estimatedMinutes)}分</p>
+            </div>
+            <div class="thresholds" aria-label="Thresholds">
+              <span>最低 ${task.minimumQty}</span>
+              <span>標準 ${task.standardQty}</span>
+              <span>追加 ${task.extraQty}</span>
+            </div>
+          </article>
+        `;
+      }
+
+      function addRange(map, materialId, start, end) {
+        const list = map.get(materialId) || [];
+        list.push({ start, end });
+        list.sort((a, b) => a.start - b.start);
+        map.set(materialId, list);
+      }
+
+      function hardStopFor(input, date) {
+        const override = input.exceptions.find((item) => item.date === date && item.type === "hard_stop_override");
+        return override ? override.endAt : input.settings.hardStopTime;
+      }
+
+      function contextFits(materialContext, blockContext) {
+        return materialContext === "either" || blockContext === "either" || materialContext === blockContext;
+      }
+
+      function minutesPerUnit(material) {
+        return material.estimatedMinutesPerUnit || material.initialMinutesPerUnit || 10;
+      }
+
+      function timestamp(date, time) {
+        return new Date(`${date}T${time}:00`).getTime();
+      }
+
+      function addDays(date, amount) {
+        return new Date(new Date(`${date}T00:00:00`).getTime() + amount * 86400000).toISOString().slice(0, 10);
+      }
+
+      function daysBetween(startDate, endDate) {
+        return Math.round((new Date(`${endDate}T00:00:00`).getTime() - new Date(`${startDate}T00:00:00`).getTime()) / 86400000);
+      }
+
+      function revision(tasks, warnings) {
+        const text = JSON.stringify({ tasks, warnings });
+        let hash = 0;
+        for (let index = 0; index < text.length; index += 1) hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+        return hash;
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[char]);
+      }
+
+      function formValue(data, key) {
+        return String(data.get(key) || "");
+      }
+
+      function formNumber(data, key) {
+        return Number(data.get(key) || 0);
+      }
+
+      function createId(prefix) {
+        if (crypto && crypto.randomUUID) return `${prefix}:${crypto.randomUUID()}`;
+        return `${prefix}:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+      }
+
+      document.querySelectorAll("[data-panel]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-panel]").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          for (const id of ["today-panel", "materials-panel", "schedule-panel"]) {
+            document.getElementById(id).hidden = id !== `${button.dataset.panel}-panel`;
+          }
+        });
+      });
+
+      document.getElementById("material-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        planner.materials.push({
+          id: createId("material"),
+          subject: formValue(data, "subject"),
+          name: formValue(data, "name"),
+          phase: formValue(data, "phase"),
+          unitType: formValue(data, "unitType"),
+          startValue: formNumber(data, "startValue"),
+          endValue: formNumber(data, "endValue"),
+          currentValue: formNumber(data, "currentValue"),
+          deadline: formValue(data, "deadline"),
+          subjectPriority: formNumber(data, "subjectPriority"),
+          materialPriority: formNumber(data, "materialPriority"),
+          context: formValue(data, "context"),
+          minChunk: formNumber(data, "minChunk"),
+          initialMinutesPerUnit: formNumber(data, "minutesPerUnit"),
+          estimatedMinutesPerUnit: formNumber(data, "minutesPerUnit"),
+          active: true
+        });
+        event.currentTarget.reset();
+        savePlanner();
+        render();
+        document.querySelector('[data-panel="today"]').click();
+      });
+
+      document.getElementById("schedule-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        planner.scheduleTemplates.push({
+          id: createId("slot"),
+          weekday: formNumber(data, "weekday"),
+          startTime: formValue(data, "startTime"),
+          endTime: formValue(data, "endTime"),
+          context: formValue(data, "context"),
+          focusLevel: formValue(data, "focusLevel"),
+          extendable: data.get("extendable") === "on",
+          label: formValue(data, "label"),
+          active: true
+        });
+        event.currentTarget.reset();
+        savePlanner();
+        render();
+        document.querySelector('[data-panel="today"]').click();
+      });
+
+      document.getElementById("soft-end").addEventListener("change", (event) => {
+        if (event.target.value) {
+          planner.settings.softEndTime = event.target.value;
+          savePlanner();
+          render();
+        }
+      });
+
+      document.getElementById("hard-stop").addEventListener("change", (event) => {
+        if (event.target.value) {
+          planner.settings.hardStopTime = event.target.value;
+          savePlanner();
+          render();
+        }
+      });
+
+      document.getElementById("reset-button").addEventListener("click", () => {
+        planner = structuredClone(seedInput);
+        localStorage.removeItem(storageKey);
+        render();
+      });
+
+      document.getElementById("theme-options").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-theme-choice]");
+        if (button) applyTheme(button.dataset.themeChoice);
+      });
+
+      function normalizeCloudCode(code) {
+        return String(code ?? "").normalize("NFKC").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      }
+
+      function formatCloudCode(code) {
+        const normalized = normalizeCloudCode(code);
+        if (normalized.startsWith("JKB") && normalized.length === 11) {
+          return `${normalized.slice(0, 3)}-${normalized.slice(3, 7)}-${normalized.slice(7, 11)}`;
+        }
+        return normalized;
+      }
+
+      function generateCloudCode() {
+        const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const values = crypto.getRandomValues(new Uint32Array(8));
+        let body = "";
+        for (const value of values) body += alphabet[value % alphabet.length];
+        return `JKB${body}`;
+      }
+
+      function createCloudCodeImmediately() {
+        const code = generateCloudCode();
+        const formatted = formatCloudCode(code);
+        const input = document.getElementById("personal-code-input");
+        input.value = formatted;
+        input.focus();
+        input.select();
+        setTransferStatus(`個人コード ${formatted} を作成しました。オンライン保存を試しています。`);
+        window.dispatchEvent(new CustomEvent("jukenbanso:cloud-code-created", { detail: { code } }));
+      }
+
+      document.getElementById("create-cloud-code").addEventListener("click", createCloudCodeImmediately);
+
+      window.jukenbansoApp = {
+        getPlanner: () => structuredClone(planner),
+        setPlanner(nextPlanner) {
+          planner = structuredClone(nextPlanner);
+          localStorage.setItem(storageKey, JSON.stringify(planner));
+          render();
+        },
+        getTheme: loadTheme,
+        setTheme: applyTheme,
+        setStatus: setTransferStatus
+      };
+
+      render();
+    </script>
+    <script type="module" src="./firebase-sync.js"></script>
+  </body>
+</html>
