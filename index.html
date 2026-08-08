@@ -16,6 +16,54 @@
         --green: #2d7f5e;
         --amber: #a66418;
         --slate: #5b6670;
+        --soft: #edf1ed;
+        --input: #fbfcfa;
+        --chip: #e9efe9;
+        --focus: rgba(47, 104, 189, 0.22);
+      }
+
+      :root[data-theme="mint"] {
+        --background: #f0f7ef;
+        --foreground: #15251b;
+        --muted: #627369;
+        --line: #d4e2d4;
+        --panel: #fefffc;
+        --soft: #e7f0e6;
+        --input: #fbfdf8;
+        --chip: #dfeade;
+      }
+
+      :root[data-theme="sky"] {
+        --background: #f1f6fa;
+        --foreground: #14212c;
+        --muted: #60707e;
+        --line: #d5e1ea;
+        --panel: #ffffff;
+        --soft: #e6eef5;
+        --input: #fbfdff;
+        --chip: #dfeaf3;
+      }
+
+      :root[data-theme="lavender"] {
+        --background: #f6f3f9;
+        --foreground: #231b2b;
+        --muted: #70677a;
+        --line: #e2d9ea;
+        --panel: #fffefe;
+        --soft: #eee8f3;
+        --input: #fffaff;
+        --chip: #e7e0ee;
+      }
+
+      :root[data-theme="warm"] {
+        --background: #f8f5ed;
+        --foreground: #251f16;
+        --muted: #756d5d;
+        --line: #e4ddcc;
+        --panel: #fffefa;
+        --soft: #f0eadc;
+        --input: #fffdf7;
+        --chip: #ebe4d5;
       }
 
       * {
@@ -122,7 +170,7 @@
         padding: 5px;
         border: 1px solid var(--line);
         border-radius: 8px;
-        background: #edf1ed;
+        background: var(--soft);
       }
 
       .segmented button {
@@ -138,6 +186,70 @@
         background: var(--panel);
         color: var(--foreground);
         box-shadow: 0 1px 4px rgba(24, 32, 28, 0.08);
+      }
+
+      .theme-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .theme-options {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .theme-options button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        gap: 7px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--input);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .theme-options button.active {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px var(--focus);
+      }
+
+      .theme-swatch {
+        width: 16px;
+        height: 16px;
+        border: 1px solid rgba(23, 32, 29, 0.18);
+        border-radius: 999px;
+      }
+
+      .theme-swatch-paper {
+        background: #f7f8f5;
+      }
+
+      .theme-swatch-mint {
+        background: #dfeade;
+      }
+
+      .theme-swatch-sky {
+        background: #dfeaf3;
+      }
+
+      .theme-swatch-lavender {
+        background: #e7e0ee;
+      }
+
+      .theme-swatch-warm {
+        background: #ebe4d5;
       }
 
       .summary-grid {
@@ -226,7 +338,7 @@
         min-height: 28px;
         padding: 4px 9px;
         border-radius: 999px;
-        background: #e9efe9;
+        background: var(--chip);
         color: #26342e;
         font-size: 12px;
         font-weight: 800;
@@ -248,7 +360,7 @@
         min-height: 44px;
         padding: 11px 8px;
         border-radius: 7px;
-        background: #f0f3ef;
+        background: var(--soft);
         color: #25312c;
         font-size: 13px;
         font-weight: 800;
@@ -300,7 +412,7 @@
         min-height: 46px;
         border: 1px solid var(--line);
         border-radius: 7px;
-        background: #fbfcfa;
+        background: var(--input);
         color: var(--foreground);
         padding: 10px 11px;
       }
@@ -308,7 +420,7 @@
       input:focus,
       select:focus,
       button:focus-visible {
-        outline: 3px solid rgba(47, 104, 189, 0.22);
+        outline: 3px solid var(--focus);
         outline-offset: 2px;
       }
 
@@ -340,7 +452,7 @@
 
       .secondary-action {
         border: 1px solid var(--line);
-        background: #f4f6f3;
+        background: var(--soft);
         color: var(--foreground);
       }
 
@@ -363,7 +475,7 @@
         height: 9px;
         overflow: hidden;
         border-radius: 999px;
-        background: #e4e9e3;
+        background: var(--chip);
       }
 
       .bar-row i {
@@ -442,8 +554,13 @@
 
         .task-card,
         .two-column,
-        .form-layout {
+        .form-layout,
+        .theme-panel {
           grid-template-columns: 1fr;
+        }
+
+        .theme-options {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .thresholds {
@@ -467,6 +584,7 @@
         }
 
         .segmented,
+        .theme-options,
         .form-grid {
           grid-template-columns: 1fr;
         }
@@ -521,6 +639,20 @@
         <button type="button" data-panel="materials">教材追加</button>
         <button type="button" data-panel="schedule">生活時間</button>
       </nav>
+
+      <section class="theme-panel" aria-label="背景カラー">
+        <div>
+          <p class="eyebrow">Color</p>
+          <h2>背景カラー</h2>
+        </div>
+        <div class="theme-options" id="theme-options">
+          <button class="active" type="button" data-theme-choice="paper"><span class="theme-swatch theme-swatch-paper"></span>標準</button>
+          <button type="button" data-theme-choice="mint"><span class="theme-swatch theme-swatch-mint"></span>若葉</button>
+          <button type="button" data-theme-choice="sky"><span class="theme-swatch theme-swatch-sky"></span>薄空</button>
+          <button type="button" data-theme-choice="lavender"><span class="theme-swatch theme-swatch-lavender"></span>藤</button>
+          <button type="button" data-theme-choice="warm"><span class="theme-swatch theme-swatch-warm"></span>生成</button>
+        </div>
+      </section>
 
       <section id="today-panel"></section>
 
@@ -634,6 +766,8 @@
 
     <script>
       const storageKey = "jukenbanso-system-static-v1";
+      const themeKey = "jukenbanso-background-theme-v1";
+      const themeIds = ["paper", "mint", "sky", "lavender", "warm"];
       const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
       const seedInput = {
         today: "2026-08-10",
@@ -651,6 +785,23 @@
       };
 
       let planner = loadPlanner();
+      applyTheme(loadTheme());
+
+      function loadTheme() {
+        const saved = localStorage.getItem(themeKey);
+        return themeIds.includes(saved) ? saved : "paper";
+      }
+
+      function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem(themeKey, theme);
+        document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+          const active = button.dataset.themeChoice === theme;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+      }
+
       function loadPlanner() {
         const saved = localStorage.getItem(storageKey);
         return saved ? JSON.parse(saved) : structuredClone(seedInput);
@@ -1041,6 +1192,11 @@
         planner = structuredClone(seedInput);
         localStorage.removeItem(storageKey);
         render();
+      });
+
+      document.getElementById("theme-options").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-theme-choice]");
+        if (button) applyTheme(button.dataset.themeChoice);
       });
 
       render();
