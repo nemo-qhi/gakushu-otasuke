@@ -71,10 +71,10 @@ type PlannerTask = {
   locked: boolean;
 };
 
-const storageKey = "jukentanso-system-v0";
-const clientIdKey = "jukentanso-client-id-v0";
-const personalCodeKey = "jukentanso-personal-code-v0";
-const revisionKey = "jukentanso-sync-revision-v0";
+const storageKey = "jukenbanso-system-v1";
+const clientIdKey = "jukenbanso-client-id-v1";
+const personalCodeKey = "jukenbanso-personal-code-v1";
+const revisionKey = "jukenbanso-sync-revision-v1";
 const appName = "受験伴走システム";
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 

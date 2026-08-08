@@ -22,7 +22,7 @@ test("keeps material and schedule entry inside the app", async () => {
   );
 
   assert.match(source, /const appName = "受験伴走システム"/);
-  assert.match(source, /storageKey = "jukentanso-system-v0"/);
+  assert.match(source, /storageKey = "jukenbanso-system-v1"/);
   assert.match(source, /window\.localStorage\.setItem/);
   assert.match(source, /教材追加/);
   assert.match(source, /生活時間/);
