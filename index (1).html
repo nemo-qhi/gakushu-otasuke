@@ -85,7 +85,8 @@
 
       button,
       input,
-      select {
+      select,
+      textarea {
         font: inherit;
         font-size: 16px;
       }
@@ -252,6 +253,36 @@
         background: #ebe4d5;
       }
 
+      .transfer-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+        gap: 12px;
+        align-items: start;
+        margin-bottom: 18px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .transfer-panel p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .transfer-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 112px;
+        gap: 8px;
+        align-items: end;
+      }
+
+      .transfer-actions label {
+        grid-column: 1 / -1;
+      }
+
       .summary-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -407,7 +438,8 @@
       }
 
       input,
-      select {
+      select,
+      textarea {
         width: 100%;
         min-height: 46px;
         border: 1px solid var(--line);
@@ -417,8 +449,14 @@
         padding: 10px 11px;
       }
 
+      textarea {
+        min-height: 118px;
+        resize: vertical;
+      }
+
       input:focus,
       select:focus,
+      textarea:focus,
       button:focus-visible {
         outline: 3px solid var(--focus);
         outline-offset: 2px;
@@ -555,7 +593,8 @@
         .task-card,
         .two-column,
         .form-layout,
-        .theme-panel {
+        .theme-panel,
+        .transfer-panel {
           grid-template-columns: 1fr;
         }
 
@@ -585,8 +624,13 @@
 
         .segmented,
         .theme-options,
+        .transfer-actions,
         .form-grid {
           grid-template-columns: 1fr;
+        }
+
+        .transfer-actions label {
+          grid-column: auto;
         }
 
         .summary-grid {
@@ -631,7 +675,7 @@
           <p class="eyebrow">Prototype</p>
           <h1>受験伴走システム</h1>
         </div>
-        <div class="sync-pill">端末内保存</div>
+        <div class="sync-pill">コード引き継ぎ</div>
       </section>
 
       <nav class="segmented" aria-label="Primary views">
@@ -651,6 +695,23 @@
           <button type="button" data-theme-choice="sky"><span class="theme-swatch theme-swatch-sky"></span>薄空</button>
           <button type="button" data-theme-choice="lavender"><span class="theme-swatch theme-swatch-lavender"></span>藤</button>
           <button type="button" data-theme-choice="warm"><span class="theme-swatch theme-swatch-warm"></span>生成</button>
+        </div>
+      </section>
+
+      <section class="transfer-panel" aria-label="別端末への引き継ぎ">
+        <div>
+          <p class="eyebrow">Sync</p>
+          <h2>コードで別端末へ引き継ぎ</h2>
+          <p id="transfer-status">今の端末の内容をコード化して、別端末で読み込めます。</p>
+        </div>
+        <div class="transfer-actions">
+          <button class="primary-action" type="button" id="generate-transfer-code">コードを生成</button>
+          <button class="secondary-action" type="button" id="copy-transfer-code">コピー</button>
+          <label>
+            引き継ぎコード
+            <textarea id="transfer-code" placeholder="ここに生成されたコード、または別端末から持ってきたコードを貼り付けます"></textarea>
+          </label>
+          <button class="secondary-action" type="button" id="load-transfer-code">コードを読み込む</button>
         </div>
       </section>
 
@@ -800,6 +861,47 @@
           button.classList.toggle("active", active);
           button.setAttribute("aria-pressed", String(active));
         });
+      }
+
+      function setTransferStatus(message) {
+        document.getElementById("transfer-status").textContent = message;
+      }
+
+      function encodeTransferCode() {
+        const payload = {
+          version: 1,
+          app: "jukenbanso",
+          exportedAt: new Date().toISOString(),
+          theme: loadTheme(),
+          planner
+        };
+        const json = JSON.stringify(payload);
+        const bytes = new TextEncoder().encode(json);
+        let binary = "";
+        for (let index = 0; index < bytes.length; index += 0x8000) {
+          binary += String.fromCharCode(...bytes.slice(index, index + 0x8000));
+        }
+        return `JB1-${btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/u, "")}`;
+      }
+
+      function decodeTransferCode(rawCode) {
+        const compact = rawCode.trim().replace(/^JB1-/iu, "").replace(/\s+/gu, "");
+        if (!compact) throw new Error("コードが空です。");
+
+        const base64 = compact.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+        const binary = atob(padded);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        const payload = JSON.parse(new TextDecoder().decode(bytes));
+
+        if (payload?.app !== "jukenbanso" || payload?.version !== 1 || !payload?.planner) {
+          throw new Error("受験伴走システムの引き継ぎコードとして読み込めません。");
+        }
+        if (!Array.isArray(payload.planner.materials) || !Array.isArray(payload.planner.scheduleTemplates)) {
+          throw new Error("コードの中身が壊れているようです。");
+        }
+
+        return payload;
       }
 
       function loadPlanner() {
@@ -1192,6 +1294,39 @@
         planner = structuredClone(seedInput);
         localStorage.removeItem(storageKey);
         render();
+      });
+
+      document.getElementById("generate-transfer-code").addEventListener("click", () => {
+        document.getElementById("transfer-code").value = encodeTransferCode();
+        setTransferStatus("コードを生成しました。別端末でこのコードを貼り付けて読み込んでください。");
+      });
+
+      document.getElementById("copy-transfer-code").addEventListener("click", async () => {
+        const code = document.getElementById("transfer-code").value.trim();
+        if (!code) {
+          setTransferStatus("先にコードを生成してください。");
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(code);
+          setTransferStatus("コードをコピーしました。");
+        } catch {
+          setTransferStatus("コピーできない場合は、コード欄を選択して手動でコピーしてください。");
+        }
+      });
+
+      document.getElementById("load-transfer-code").addEventListener("click", () => {
+        try {
+          const payload = decodeTransferCode(document.getElementById("transfer-code").value);
+          planner = payload.planner;
+          savePlanner();
+          if (themeIds.includes(payload.theme)) applyTheme(payload.theme);
+          render();
+          setTransferStatus("コードを読み込みました。この端末にも内容を保存しました。");
+        } catch (error) {
+          setTransferStatus(error.message || "コードを読み込めませんでした。");
+        }
       });
 
       document.getElementById("theme-options").addEventListener("click", (event) => {
