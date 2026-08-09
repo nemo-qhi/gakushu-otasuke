@@ -628,7 +628,7 @@
 
       .compact-list div {
         display: grid;
-        grid-template-columns: 64px minmax(0, 1fr) 86px 116px;
+        grid-template-columns: 64px minmax(0, 1fr) 96px;
         gap: 10px;
         align-items: center;
         min-height: 48px;
@@ -656,18 +656,32 @@
       }
 
       .item-actions {
+        grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(92px, 1fr));
         gap: 6px;
       }
 
       .item-actions button {
-        min-height: 34px;
+        min-height: 40px;
         border: 1px solid var(--line);
         border-radius: 7px;
         background: var(--soft);
         color: var(--foreground);
-        font-size: 12px;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .item-actions button:first-child {
+        border-color: rgba(47, 104, 189, 0.38);
+        background: #eef4fb;
+        color: #1f4f94;
+      }
+
+      .editing-note {
+        margin: 8px 0 0;
+        color: var(--blue);
+        font-size: 13px;
         font-weight: 900;
       }
 
@@ -828,7 +842,8 @@
         <form class="entry-form" id="material-form">
           <div>
             <p class="eyebrow">Material</p>
-            <h2>教材を追加</h2>
+            <h2 id="material-form-title">教材を追加</h2>
+            <p class="editing-note" id="material-editing-note" hidden></p>
           </div>
           <label>科目<input name="subject" placeholder="英語" required /></label>
           <label>教材名<input name="name" placeholder="英単語ターゲット" required /></label>
@@ -889,7 +904,8 @@
         <form class="entry-form" id="schedule-form">
           <div>
             <p class="eyebrow">Study Block</p>
-            <h2>学習枠を追加</h2>
+            <h2 id="schedule-form-title">学習枠を追加</h2>
+            <p class="editing-note" id="schedule-editing-note" hidden></p>
           </div>
           <label>ラベル<input name="label" placeholder="帰宅後" required /></label>
           <div class="form-grid">
@@ -1297,7 +1313,9 @@
           </section>
         `;
 
-        document.getElementById("material-list").innerHTML = planner.materials.map((material) => `
+        document.getElementById("material-list").innerHTML = planner.materials.length === 0
+          ? `<p class="quiet">登録済み教材はありません。</p>`
+          : planner.materials.map((material) => `
           <div>
             <b>${escapeHtml(material.subject)}</b>
             <span>${escapeHtml(material.name)}</span>
@@ -1309,7 +1327,9 @@
           </div>
         `).join("");
 
-        document.getElementById("schedule-list").innerHTML = planner.scheduleTemplates.map((block) => `
+        document.getElementById("schedule-list").innerHTML = planner.scheduleTemplates.length === 0
+          ? `<p class="quiet">登録済み学習枠はありません。</p>`
+          : planner.scheduleTemplates.map((block) => `
           <div>
             <b>${weekdays[block.weekday]}曜</b>
             <span>${escapeHtml(block.label)}</span>
@@ -1476,6 +1496,9 @@
         setField(form, "minChunk", material.minChunk);
         setField(form, "minutesPerUnit", minutesPerUnit(material));
         editingMaterialId = material.id;
+        document.getElementById("material-form-title").textContent = "教材を編集中";
+        document.getElementById("material-editing-note").textContent = `${material.name} を編集しています。`;
+        document.getElementById("material-editing-note").hidden = false;
         document.getElementById("material-submit-button").textContent = "更新して再計算";
         document.getElementById("cancel-material-edit").hidden = false;
         document.querySelector('[data-panel="materials"]').click();
@@ -1492,6 +1515,9 @@
         setField(form, "focusLevel", block.focusLevel);
         form.elements.extendable.checked = Boolean(block.extendable);
         editingScheduleId = block.id;
+        document.getElementById("schedule-form-title").textContent = "学習枠を編集中";
+        document.getElementById("schedule-editing-note").textContent = `${block.label} を編集しています。`;
+        document.getElementById("schedule-editing-note").hidden = false;
         document.getElementById("schedule-submit-button").textContent = "更新して再計算";
         document.getElementById("cancel-schedule-edit").hidden = false;
         document.querySelector('[data-panel="schedule"]').click();
@@ -1505,6 +1531,9 @@
       function resetMaterialEditing() {
         editingMaterialId = "";
         document.getElementById("material-form").reset();
+        document.getElementById("material-form-title").textContent = "教材を追加";
+        document.getElementById("material-editing-note").textContent = "";
+        document.getElementById("material-editing-note").hidden = true;
         document.getElementById("material-submit-button").textContent = "追加して再計算";
         document.getElementById("cancel-material-edit").hidden = true;
       }
@@ -1512,6 +1541,9 @@
       function resetScheduleEditing() {
         editingScheduleId = "";
         document.getElementById("schedule-form").reset();
+        document.getElementById("schedule-form-title").textContent = "学習枠を追加";
+        document.getElementById("schedule-editing-note").textContent = "";
+        document.getElementById("schedule-editing-note").hidden = true;
         document.getElementById("schedule-submit-button").textContent = "追加して再計算";
         document.getElementById("cancel-schedule-edit").hidden = true;
       }
