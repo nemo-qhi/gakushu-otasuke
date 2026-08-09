@@ -396,6 +396,69 @@
         margin: 18px 0;
       }
 
+      .pace-list {
+        display: grid;
+        gap: 10px;
+        margin: 18px 0;
+      }
+
+      .pace-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 0.38fr);
+        gap: 12px;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .pace-card strong,
+      .pace-card span,
+      .pace-card small {
+        overflow-wrap: anywhere;
+      }
+
+      .pace-card strong {
+        display: block;
+        margin: 6px 0;
+        font-size: 16px;
+      }
+
+      .pace-card small {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .pace-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .pace-grid span {
+        min-height: 42px;
+        padding: 8px;
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--foreground);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .pace-ok {
+        border-left: 4px solid var(--green);
+      }
+
+      .pace-warning {
+        border-left: 4px solid var(--amber);
+      }
+
+      .pace-danger {
+        border-left: 4px solid #b94a48;
+      }
+
       .empty-state {
         min-height: 96px;
         padding: 18px;
@@ -732,6 +795,7 @@
         }
 
         .task-card,
+        .pace-card,
         .two-column,
         .form-layout,
         .theme-panel,
@@ -1133,7 +1197,13 @@
       function planStudy(input) {
         input.today = currentDateISO();
         const dates = Array.from({ length: input.planningDays || 7 }, (_, index) => addDays(input.today, index));
-        const activeMaterials = input.materials.filter((item) => item.active !== false);
+        const baseMaterials = input.materials.filter((item) => item.active !== false);
+        const paceReports = buildPaceReports(input, baseMaterials);
+        const paceByMaterial = new Map(paceReports.map((report) => [report.materialId, report]));
+        const activeMaterials = baseMaterials.map((material) => ({
+          ...material,
+          pacePressure: paceByMaterial.get(material.id)?.pressure || 0
+        }));
         const immutableTasks = input.existingTasks.filter((task) => task.locked || task.status === "closed" || task.status === "in_progress");
         const usedRanges = new Map();
         for (const task of immutableTasks) addRange(usedRanges, task.materialId, task.rangeStart, task.rangeEnd);
@@ -1155,15 +1225,12 @@
           warnings.push({ code: "no_schedule", materialId: "", message: "生活時間に学習枠を追加すると、教材を割り当てられます。" });
         }
 
-        for (const material of activeMaterials) {
-          const capacity = dates
-            .filter((date) => date <= material.deadline)
-            .flatMap((date) => blocksByDate.get(date) || [])
-            .filter((block) => contextFits(material.context, block.context))
-            .reduce((sum, block) => sum + Math.max(0, block.minutes - block.usedMinutes), 0);
-          const required = Math.max(0, material.endValue - material.currentValue) * minutesPerUnit(material);
-          if (required > capacity) {
-            warnings.push({ code: "infeasible_deadline", materialId: material.id, message: `${material.name} は期限までに収まりにくい見込みです。` });
+        for (const report of paceReports) {
+          if (report.status === "no_time") {
+            warnings.push({ code: "no_compatible_time", materialId: report.materialId, message: `${report.name} に使える学習枠が期限までにありません。教材の場所と生活時間の場所を確認してください。` });
+          }
+          if (report.status === "shortage") {
+            warnings.push({ code: "infeasible_deadline", materialId: report.materialId, message: `${report.name} は期限までに約${report.shortageMinutes}分不足します。必要ペースを確認してください。` });
           }
         }
 
@@ -1197,11 +1264,57 @@
           tasks,
           changedTaskCount: generated.length,
           warnings,
+          paceReports,
           schedulerRevision: revision(tasks, warnings),
           summary: {
             plannedMinutes: Math.round(generated.reduce((sum, task) => sum + task.estimatedMinutes, 0))
           }
         };
+      }
+
+      function buildPaceReports(input, materials) {
+        return materials.map((material) => {
+          const remainingUnits = Math.max(0, material.endValue - material.currentValue);
+          const unitMinutes = minutesPerUnit(material);
+          const requiredMinutes = Math.round(remainingUnits * unitMinutes);
+          const deadline = material.deadline || input.today;
+          const daysLeft = Math.max(1, daysBetween(input.today, deadline) + 1);
+          const dates = Array.from({ length: Math.min(daysLeft, 180) }, (_, index) => addDays(input.today, index));
+          const compatibleBlocks = dates
+            .flatMap((date) => availableBlocks(input, date))
+            .filter((block) => contextFits(material.context, block.context));
+          const availableMinutes = Math.round(compatibleBlocks.reduce((sum, block) => sum + block.minutes, 0));
+          const studyDays = new Set(compatibleBlocks.map((block) => block.date)).size;
+          const sessionCount = compatibleBlocks.length;
+          const possibleUnits = unitMinutes > 0 ? availableMinutes / unitMinutes : 0;
+          const shortageMinutes = Math.max(0, requiredMinutes - availableMinutes);
+          const pressure = requiredMinutes === 0 ? 0 : requiredMinutes / Math.max(1, availableMinutes);
+          let status = "ok";
+          if (remainingUnits <= 0) status = "done";
+          else if (availableMinutes <= 0) status = "no_time";
+          else if (shortageMinutes > 0) status = "shortage";
+          else if (pressure >= 0.85) status = "tight";
+
+          return {
+            materialId: material.id,
+            subject: material.subject,
+            name: material.name,
+            unitType: material.unitType,
+            remainingUnits: roundQty(remainingUnits),
+            requiredMinutes,
+            availableMinutes,
+            shortageMinutes,
+            possibleUnits: roundQty(possibleUnits),
+            daysLeft,
+            studyDays,
+            sessionCount,
+            unitsPerDay: roundQty(remainingUnits / daysLeft),
+            unitsPerStudyDay: roundQty(remainingUnits / Math.max(1, studyDays)),
+            unitsPerSession: roundQty(remainingUnits / Math.max(1, sessionCount)),
+            pressure,
+            status
+          };
+        });
       }
 
       function availableBlocks(input, date) {
@@ -1319,7 +1432,8 @@
         const daysLeft = Math.max(0, daysBetween(date, material.deadline));
         const deadline = Math.max(0, 42 - daysLeft * 6);
         const fit = material.context === block.context ? 14 : 5;
-        return material.subjectPriority * 12 + material.materialPriority * 8 + deadline + fit;
+        const pace = Math.min(80, Math.round((material.pacePressure || 0) * 24));
+        return material.subjectPriority * 12 + material.materialPriority * 8 + deadline + fit + pace;
       }
 
       function render() {
@@ -1350,6 +1464,13 @@
           </section>
           <section class="task-list" aria-label="Planned tasks">
             ${plannedTasks.length === 0 ? `<div class="empty-state">教材と生活時間を追加すると、ここに日付・時間つきの予定が表示されます。</div>` : plannedTasks.slice(0, 18).map(taskCard).join("")}
+          </section>
+          <section class="today-band">
+            <div><p class="eyebrow">Pace</p><h2>教材別の必要ペース</h2></div>
+            <span>${result.paceReports.length}件</span>
+          </section>
+          <section class="pace-list" aria-label="Material pace">
+            ${result.paceReports.length === 0 ? `<div class="empty-state">教材を追加すると、残り量と使える時間から必要ペースを計算します。</div>` : result.paceReports.map(paceCard).join("")}
           </section>
           <section class="two-column">
             <div class="panel"><h2>教科別予定・完了</h2><div class="bars">
@@ -1433,6 +1554,37 @@
               </label>
               <span>予定 ${task.standardQty}</span>
               <span>${Math.round(task.estimatedMinutes)}分</span>
+            </div>
+          </article>
+        `;
+      }
+
+      function paceCard(report) {
+        const tone = report.status === "shortage" || report.status === "no_time"
+          ? "pace-danger"
+          : report.status === "tight"
+            ? "pace-warning"
+            : "pace-ok";
+        const statusText = {
+          done: "完了済み",
+          ok: "このペースで可",
+          tight: "余裕少なめ",
+          shortage: "時間不足",
+          no_time: "対応する学習枠なし"
+        }[report.status] || "確認中";
+
+        return `
+          <article class="pace-card ${tone}">
+            <div>
+              <span class="subject">${escapeHtml(report.subject)}</span>
+              <strong>${escapeHtml(report.name)}</strong>
+              <small>残り ${report.remainingUnits}${escapeHtml(report.unitType)} / 必要 ${report.requiredMinutes}分 / 使える ${report.availableMinutes}分</small>
+            </div>
+            <div class="pace-grid">
+              <span>状態<br>${statusText}</span>
+              <span>1日あたり<br>${report.unitsPerDay}${escapeHtml(report.unitType)}</span>
+              <span>学習日あたり<br>${report.unitsPerStudyDay}${escapeHtml(report.unitType)}</span>
+              <span>1枠あたり<br>${report.unitsPerSession}${escapeHtml(report.unitType)}</span>
             </div>
           </article>
         `;
