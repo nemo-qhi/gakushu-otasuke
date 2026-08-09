@@ -454,6 +454,25 @@
         font-weight: 800;
       }
 
+      .task-complete {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .task-complete input {
+        width: 20px;
+        min-height: 20px;
+      }
+
       .thresholds {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -624,6 +643,19 @@
         display: grid;
         gap: 9px;
         margin-top: 16px;
+      }
+
+      .weekday-group {
+        display: grid;
+        gap: 6px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .weekday-group-title {
+        color: var(--foreground);
+        font-size: 14px;
+        font-weight: 900;
       }
 
       .compact-list div {
@@ -845,7 +877,17 @@
             <h2 id="material-form-title">教材を追加</h2>
             <p class="editing-note" id="material-editing-note" hidden></p>
           </div>
-          <label>科目<input name="subject" placeholder="英語" required /></label>
+          <label>
+            教科
+            <select name="subject" required>
+              <option>国語</option>
+              <option>数学</option>
+              <option selected>英語</option>
+              <option>社会</option>
+              <option>理科</option>
+              <option>その他</option>
+            </select>
+          </label>
           <label>教材名<input name="name" placeholder="英単語ターゲット" required /></label>
           <div class="form-grid">
             <label>フェーズ<input name="phase" value="初見" required /></label>
@@ -971,7 +1013,8 @@
         scheduleTemplates: [],
         exceptions: [],
         materials: [],
-        existingTasks: []
+        existingTasks: [],
+        completedTasks: {}
       };
 
       let planner = loadPlanner();
@@ -1076,7 +1119,8 @@
           scheduleTemplates: Array.isArray(loaded.scheduleTemplates) ? loaded.scheduleTemplates : [],
           exceptions: Array.isArray(loaded.exceptions) ? loaded.exceptions : [],
           materials: Array.isArray(loaded.materials) ? loaded.materials : [],
-          existingTasks: Array.isArray(loaded.existingTasks) ? loaded.existingTasks : []
+          existingTasks: Array.isArray(loaded.existingTasks) ? loaded.existingTasks : [],
+          completedTasks: loaded.completedTasks && typeof loaded.completedTasks === "object" ? loaded.completedTasks : {}
         };
       }
 
@@ -1167,7 +1211,9 @@
           .filter((template) => template.active !== false && template.weekday === weekday)
           .map((template) => {
             const startAt = timestamp(date, template.startTime);
-            const endAt = Math.min(timestamp(date, template.endTime), timestamp(date, hardStop));
+            const templateEndAt = timestamp(date, template.endTime);
+            const hardStopAt = timestamp(date, hardStop);
+            const endAt = hardStopAt > startAt ? Math.min(templateEndAt, hardStopAt) : templateEndAt;
             return {
               id: `${date}:${template.id}`,
               date,
@@ -1279,10 +1325,14 @@
       function render() {
         const result = planStudy(planner);
         const plannedTasks = result.tasks.filter((task) => task.status === "planned");
-        const lockedTasks = result.tasks.filter((task) => task.locked);
-        const subjectMinutes = {};
+        const completedTasks = planner.completedTasks || {};
+        const completedCount = plannedTasks.filter((task) => completedTasks[taskCompletionKey(task)]).length;
+        const subjectStats = {};
         for (const task of plannedTasks) {
-          subjectMinutes[task.subject] = (subjectMinutes[task.subject] || 0) + task.estimatedMinutes;
+          if (!subjectStats[task.subject]) subjectStats[task.subject] = { minutes: 0, total: 0, done: 0 };
+          subjectStats[task.subject].minutes += task.estimatedMinutes;
+          subjectStats[task.subject].total += 1;
+          if (completedTasks[taskCompletionKey(task)]) subjectStats[task.subject].done += 1;
         }
 
         document.getElementById("soft-end").value = planner.settings.softEndTime;
@@ -1292,7 +1342,7 @@
             ${metric("変更件数", `${result.changedTaskCount}件`, "blue")}
             ${metric("予定時間", `${result.summary.plannedMinutes}分`, "green")}
             ${metric("警告", `${result.warnings.length}件`, "amber")}
-            ${metric("固定保持", `${lockedTasks.length}件`, "slate")}
+            ${metric("完了", `${completedCount}/${plannedTasks.length}件`, "slate")}
           </section>
           <section class="today-band">
             <div><p class="eyebrow">Today</p><h2>今日以降の自動配分</h2></div>
@@ -1302,9 +1352,9 @@
             ${plannedTasks.length === 0 ? `<div class="empty-state">教材と生活時間を追加すると、ここに日付・時間つきの予定が表示されます。</div>` : plannedTasks.slice(0, 18).map(taskCard).join("")}
           </section>
           <section class="two-column">
-            <div class="panel"><h2>科目別予定時間</h2><div class="bars">
-              ${Object.entries(subjectMinutes).map(([subject, minutes]) => `
-                <div class="bar-row"><span>${escapeHtml(subject)}</span><div><i style="width:${Math.min(100, minutes)}%"></i></div><b>${Math.round(minutes)}分</b></div>
+            <div class="panel"><h2>教科別予定・完了</h2><div class="bars">
+              ${Object.entries(subjectStats).map(([subject, stats]) => `
+                <div class="bar-row"><span>${escapeHtml(subject)}</span><div><i style="width:${Math.min(100, stats.minutes)}%"></i></div><b>${stats.done}/${stats.total}件</b></div>
               `).join("")}
             </div></div>
             <div class="panel"><h2>検出された警告</h2>
@@ -1327,11 +1377,23 @@
           </div>
         `).join("");
 
-        document.getElementById("schedule-list").innerHTML = planner.scheduleTemplates.length === 0
-          ? `<p class="quiet">登録済み学習枠はありません。</p>`
-          : planner.scheduleTemplates.map((block) => `
+        document.getElementById("schedule-list").innerHTML = renderScheduleGroups();
+      }
+
+      function renderScheduleGroups() {
+        if (planner.scheduleTemplates.length === 0) return `<p class="quiet">登録済み学習枠はありません。</p>`;
+
+        return weekdays.map((day, weekday) => {
+          const blocks = planner.scheduleTemplates
+            .filter((block) => block.weekday === weekday)
+            .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+          return `
+            <section class="weekday-group">
+              <strong class="weekday-group-title">${day}曜</strong>
+              ${blocks.length === 0 ? `<p class="quiet">学習枠なし</p>` : blocks.map((block) => `
           <div>
-            <b>${weekdays[block.weekday]}曜</b>
+            <b>${escapeHtml(block.context === "mobile" ? "通学" : block.context === "desk" ? "机" : "共通")}</b>
             <span>${escapeHtml(block.label)}</span>
             <small>${block.startTime}〜${block.endTime}</small>
             <span class="item-actions">
@@ -1339,7 +1401,10 @@
               <button type="button" data-schedule-action="delete" data-schedule-id="${escapeHtml(block.id)}">削除</button>
             </span>
           </div>
-        `).join("");
+              `).join("")}
+            </section>
+          `;
+        }).join("");
       }
 
       function metric(label, value, tone) {
@@ -1347,6 +1412,8 @@
       }
 
       function taskCard(task) {
+        const key = taskCompletionKey(task);
+        const checked = planner.completedTasks?.[key] ? "checked" : "";
         return `
           <article class="task-card">
             <div class="task-main">
@@ -1360,12 +1427,25 @@
               <p>${task.rangeStart}〜${task.rangeEnd}${escapeHtml(task.unitType)} / ${Math.round(task.estimatedMinutes)}分</p>
             </div>
             <div class="thresholds" aria-label="Thresholds">
-              <span>最低 ${task.minimumQty}</span>
-              <span>標準 ${task.standardQty}</span>
-              <span>追加 ${task.extraQty}</span>
+              <label class="task-complete">
+                <input type="checkbox" data-complete-task="${escapeHtml(key)}" ${checked} />
+                完了
+              </label>
+              <span>予定 ${task.standardQty}</span>
+              <span>${Math.round(task.estimatedMinutes)}分</span>
             </div>
           </article>
         `;
+      }
+
+      function taskCompletionKey(task) {
+        return [
+          task.date,
+          task.slotId,
+          task.materialId,
+          task.rangeStart,
+          task.rangeEnd
+        ].join("|");
       }
 
       function formatDateLabel(date) {
@@ -1639,6 +1719,19 @@
           savePlanner();
           render();
         }
+      });
+
+      document.getElementById("today-panel").addEventListener("change", (event) => {
+        const checkbox = event.target.closest("[data-complete-task]");
+        if (!checkbox) return;
+        planner.completedTasks = planner.completedTasks || {};
+        if (checkbox.checked) {
+          planner.completedTasks[checkbox.dataset.completeTask] = true;
+        } else {
+          delete planner.completedTasks[checkbox.dataset.completeTask];
+        }
+        savePlanner();
+        render();
       });
 
       document.getElementById("cancel-material-edit").addEventListener("click", resetMaterialEditing);
