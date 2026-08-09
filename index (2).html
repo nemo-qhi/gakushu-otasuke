@@ -630,6 +630,35 @@
         min-height: 22px;
       }
 
+      .weekday-picker {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 6px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--input);
+      }
+
+      .weekday-picker label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        gap: 5px;
+        padding: 6px;
+        border-radius: 7px;
+        background: var(--panel);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .weekday-picker input {
+        width: 16px;
+        min-height: 16px;
+      }
+
       .form-buttons {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(120px, 0.45fr);
@@ -829,6 +858,7 @@
 
         .segmented,
         .theme-options,
+        .weekday-picker,
         .transfer-actions,
         .form-buttons,
         .form-grid {
@@ -972,6 +1002,18 @@
             <label>科目優先度<input name="subjectPriority" value="4" max="5" min="1" type="number" /></label>
             <label>教材優先度<input name="materialPriority" value="4" max="5" min="1" type="number" /></label>
             <label>
+              実施曜日
+              <span class="weekday-picker" id="material-weekdays">
+                <label><input name="weekdays" type="checkbox" value="0" checked />日</label>
+                <label><input name="weekdays" type="checkbox" value="1" checked />月</label>
+                <label><input name="weekdays" type="checkbox" value="2" checked />火</label>
+                <label><input name="weekdays" type="checkbox" value="3" checked />水</label>
+                <label><input name="weekdays" type="checkbox" value="4" checked />木</label>
+                <label><input name="weekdays" type="checkbox" value="5" checked />金</label>
+                <label><input name="weekdays" type="checkbox" value="6" checked />土</label>
+              </span>
+            </label>
+            <label>
               場所
               <select name="context">
                 <option value="mobile">通学</option>
@@ -1087,9 +1129,7 @@
       applyTheme(loadTheme());
 
       function currentDateISO() {
-        const now = new Date();
-        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-        return local.toISOString().slice(0, 10);
+        return localDateISO(new Date());
       }
 
       function loadTheme() {
@@ -1182,7 +1222,9 @@
           },
           scheduleTemplates: Array.isArray(loaded.scheduleTemplates) ? loaded.scheduleTemplates : [],
           exceptions: Array.isArray(loaded.exceptions) ? loaded.exceptions : [],
-          materials: Array.isArray(loaded.materials) ? loaded.materials : [],
+          materials: Array.isArray(loaded.materials)
+            ? loaded.materials.map((material) => ({ ...material, weekdays: normalizeMaterialWeekdays(material) }))
+            : [],
           existingTasks: Array.isArray(loaded.existingTasks) ? loaded.existingTasks : [],
           completedTasks: loaded.completedTasks && typeof loaded.completedTasks === "object" ? loaded.completedTasks : {}
         };
@@ -1202,6 +1244,7 @@
         const paceByMaterial = new Map(paceReports.map((report) => [report.materialId, report]));
         const activeMaterials = baseMaterials.map((material) => ({
           ...material,
+          weekdays: normalizeMaterialWeekdays(material),
           pacePressure: paceByMaterial.get(material.id)?.pressure || 0
         }));
         const immutableTasks = input.existingTasks.filter((task) => task.locked || task.status === "closed" || task.status === "in_progress");
@@ -1274,6 +1317,7 @@
 
       function buildPaceReports(input, materials) {
         return materials.map((material) => {
+          const materialWeekdays = normalizeMaterialWeekdays(material);
           const remainingUnits = Math.max(0, material.endValue - material.currentValue);
           const unitMinutes = minutesPerUnit(material);
           const requiredMinutes = Math.round(remainingUnits * unitMinutes);
@@ -1281,6 +1325,7 @@
           const daysLeft = Math.max(1, daysBetween(input.today, deadline) + 1);
           const dates = Array.from({ length: Math.min(daysLeft, 180) }, (_, index) => addDays(input.today, index));
           const compatibleBlocks = dates
+            .filter((date) => materialWeekdays.includes(new Date(`${date}T00:00:00`).getDay()))
             .flatMap((date) => availableBlocks(input, date))
             .filter((block) => contextFits(material.context, block.context));
           const availableMinutes = Math.round(compatibleBlocks.reduce((sum, block) => sum + block.minutes, 0));
@@ -1311,6 +1356,7 @@
             unitsPerDay: roundQty(remainingUnits / daysLeft),
             unitsPerStudyDay: roundQty(remainingUnits / Math.max(1, studyDays)),
             unitsPerSession: roundQty(remainingUnits / Math.max(1, sessionCount)),
+            weekdays: materialWeekdays,
             pressure,
             status
           };
@@ -1366,6 +1412,7 @@
           .map((material) => ({ ...material, cursor: cursors.get(material.id) ?? material.currentValue }))
           .filter((material) => material.active !== false)
           .filter((material) => material.cursor < material.endValue)
+          .filter((material) => materialAllowedOnDate(material, date))
           .filter((material) => contextFits(material.context, block.context))
           .filter((material) => schedulableQty(material, remainingMinutes, cursors) > 0)
           .filter((material) => nextRange(material, schedulableQty(material, remainingMinutes, cursors), cursors, usedRanges))
@@ -1436,6 +1483,22 @@
         return material.subjectPriority * 12 + material.materialPriority * 8 + deadline + fit + pace;
       }
 
+      function normalizeMaterialWeekdays(material) {
+        if (!Array.isArray(material.weekdays) || material.weekdays.length === 0) return [0, 1, 2, 3, 4, 5, 6];
+        const unique = [...new Set(material.weekdays.map(Number).filter((day) => day >= 0 && day <= 6))];
+        return unique.length > 0 ? unique.sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
+      }
+
+      function materialAllowedOnDate(material, date) {
+        return normalizeMaterialWeekdays(material).includes(new Date(`${date}T00:00:00`).getDay());
+      }
+
+      function weekdayText(days) {
+        const normalized = Array.isArray(days) ? days : [0, 1, 2, 3, 4, 5, 6];
+        if (normalized.length === 7) return "全曜日";
+        return normalized.map((day) => weekdays[day]).join("・");
+      }
+
       function render() {
         const result = planStudy(planner);
         const plannedTasks = result.tasks.filter((task) => task.status === "planned");
@@ -1490,7 +1553,7 @@
           <div>
             <b>${escapeHtml(material.subject)}</b>
             <span>${escapeHtml(material.name)}</span>
-            <small>${material.currentValue}〜${material.endValue}${escapeHtml(material.unitType)}</small>
+            <small>${material.currentValue}〜${material.endValue}${escapeHtml(material.unitType)} / ${escapeHtml(weekdayText(normalizeMaterialWeekdays(material)))}</small>
             <span class="item-actions">
               <button type="button" data-material-action="edit" data-material-id="${escapeHtml(material.id)}">編集</button>
               <button type="button" data-material-action="delete" data-material-id="${escapeHtml(material.id)}">削除</button>
@@ -1579,6 +1642,7 @@
               <span class="subject">${escapeHtml(report.subject)}</span>
               <strong>${escapeHtml(report.name)}</strong>
               <small>残り ${report.remainingUnits}${escapeHtml(report.unitType)} / 必要 ${report.requiredMinutes}分 / 使える ${report.availableMinutes}分</small>
+              <small>実施曜日 ${escapeHtml(weekdayText(report.weekdays))}</small>
             </div>
             <div class="pace-grid">
               <span>状態<br>${statusText}</span>
@@ -1639,8 +1703,15 @@
         return new Date(`${date}T${time}:00`).getTime();
       }
 
+      function localDateISO(date) {
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+      }
+
       function addDays(date, amount) {
-        return new Date(new Date(`${date}T00:00:00`).getTime() + amount * 86400000).toISOString().slice(0, 10);
+        const next = new Date(`${date}T00:00:00`);
+        next.setDate(next.getDate() + amount);
+        return localDateISO(next);
       }
 
       function daysBetween(startDate, endDate) {
@@ -1690,6 +1761,7 @@
           deadline: formValue(data, "deadline"),
           subjectPriority: formNumber(data, "subjectPriority"),
           materialPriority: formNumber(data, "materialPriority"),
+          weekdays: formWeekdays(data),
           context: formValue(data, "context"),
           minChunk: formNumber(data, "minChunk"),
           initialMinutesPerUnit: formNumber(data, "minutesPerUnit"),
@@ -1724,6 +1796,7 @@
         setField(form, "deadline", material.deadline);
         setField(form, "subjectPriority", material.subjectPriority);
         setField(form, "materialPriority", material.materialPriority);
+        setWeekdayFields(form, normalizeMaterialWeekdays(material));
         setField(form, "context", material.context);
         setField(form, "minChunk", material.minChunk);
         setField(form, "minutesPerUnit", minutesPerUnit(material));
@@ -1760,9 +1833,22 @@
         form.elements[name].value = value ?? "";
       }
 
+      function formWeekdays(data) {
+        const values = data.getAll("weekdays").map(Number).filter((day) => day >= 0 && day <= 6);
+        return values.length > 0 ? values : [0, 1, 2, 3, 4, 5, 6];
+      }
+
+      function setWeekdayFields(form, days) {
+        const selected = new Set(days);
+        form.querySelectorAll('input[name="weekdays"]').forEach((input) => {
+          input.checked = selected.has(Number(input.value));
+        });
+      }
+
       function resetMaterialEditing() {
         editingMaterialId = "";
         document.getElementById("material-form").reset();
+        setWeekdayFields(document.getElementById("material-form"), [0, 1, 2, 3, 4, 5, 6]);
         document.getElementById("material-form-title").textContent = "教材を追加";
         document.getElementById("material-editing-note").textContent = "";
         document.getElementById("material-editing-note").hidden = true;
