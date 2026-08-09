@@ -396,6 +396,17 @@
         margin: 18px 0;
       }
 
+      .empty-state {
+        min-height: 96px;
+        padding: 18px;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
       .task-card {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(190px, 0.42fr);
@@ -424,6 +435,23 @@
         margin: 0;
         color: var(--muted);
         font-size: 14px;
+      }
+
+      .task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+      }
+
+      .task-meta span {
+        min-height: 28px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: var(--soft);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
       }
 
       .thresholds {
@@ -520,6 +548,12 @@
         min-height: 22px;
       }
 
+      .form-buttons {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(120px, 0.45fr);
+        gap: 8px;
+      }
+
       .primary-action,
       .secondary-action {
         min-height: 48px;
@@ -594,7 +628,7 @@
 
       .compact-list div {
         display: grid;
-        grid-template-columns: 64px minmax(0, 1fr) 86px;
+        grid-template-columns: 64px minmax(0, 1fr) 86px 116px;
         gap: 10px;
         align-items: center;
         min-height: 48px;
@@ -619,6 +653,22 @@
         color: var(--muted);
         font-size: 12px;
         text-align: right;
+      }
+
+      .item-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .item-actions button {
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--foreground);
+        font-size: 12px;
+        font-weight: 900;
       }
 
       @media (max-width: 720px) {
@@ -670,6 +720,7 @@
         .segmented,
         .theme-options,
         .transfer-actions,
+        .form-buttons,
         .form-grid {
           grid-template-columns: 1fr;
         }
@@ -709,6 +760,10 @@
         .compact-list small {
           grid-column: 2;
           text-align: left;
+        }
+
+        .item-actions {
+          grid-column: 2;
         }
       }
     </style>
@@ -806,7 +861,10 @@
             <label>最小分割量<input name="minChunk" value="2" min="0.1" step="0.1" type="number" /></label>
             <label>分 / 単位<input name="minutesPerUnit" value="10" min="0.1" step="0.1" type="number" /></label>
           </div>
-          <button class="primary-action" type="submit">追加して再計算</button>
+          <div class="form-buttons">
+            <button class="primary-action" type="submit" id="material-submit-button">追加して再計算</button>
+            <button class="secondary-action" type="button" id="cancel-material-edit" hidden>編集をやめる</button>
+          </div>
         </form>
 
         <div class="panel">
@@ -867,7 +925,10 @@
             </label>
             <label class="check-row"><input name="extendable" type="checkbox" />延長可</label>
           </div>
-          <button class="primary-action" type="submit">追加して再計算</button>
+          <div class="form-buttons">
+            <button class="primary-action" type="submit" id="schedule-submit-button">追加して再計算</button>
+            <button class="secondary-action" type="button" id="cancel-schedule-edit" hidden>編集をやめる</button>
+          </div>
         </form>
 
         <div class="panel">
@@ -883,7 +944,7 @@
       const themeIds = ["paper", "mint", "sky", "lavender", "warm"];
       const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
       const seedInput = {
-        today: "2026-08-10",
+        today: currentDateISO(),
         planningDays: 7,
         settings: {
           planningBufferRatio: 0.8,
@@ -898,7 +959,15 @@
       };
 
       let planner = loadPlanner();
+      let editingMaterialId = "";
+      let editingScheduleId = "";
       applyTheme(loadTheme());
+
+      function currentDateISO() {
+        const now = new Date();
+        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+      }
 
       function loadTheme() {
         const saved = localStorage.getItem(themeKey);
@@ -979,22 +1048,37 @@
 
       function loadPlanner() {
         const saved = localStorage.getItem(storageKey);
-        return saved ? JSON.parse(saved) : structuredClone(seedInput);
+        const loaded = saved ? JSON.parse(saved) : structuredClone(seedInput);
+        return {
+          ...seedInput,
+          ...loaded,
+          today: currentDateISO(),
+          settings: {
+            ...seedInput.settings,
+            ...(loaded.settings || {})
+          },
+          scheduleTemplates: Array.isArray(loaded.scheduleTemplates) ? loaded.scheduleTemplates : [],
+          exceptions: Array.isArray(loaded.exceptions) ? loaded.exceptions : [],
+          materials: Array.isArray(loaded.materials) ? loaded.materials : [],
+          existingTasks: Array.isArray(loaded.existingTasks) ? loaded.existingTasks : []
+        };
       }
 
       function savePlanner() {
+        planner.today = currentDateISO();
         localStorage.setItem(storageKey, JSON.stringify(planner));
         window.dispatchEvent(new CustomEvent("jukenbanso:planner-saved"));
       }
 
       function planStudy(input) {
+        input.today = currentDateISO();
         const dates = Array.from({ length: input.planningDays || 7 }, (_, index) => addDays(input.today, index));
+        const activeMaterials = input.materials.filter((item) => item.active !== false);
         const immutableTasks = input.existingTasks.filter((task) => task.locked || task.status === "closed" || task.status === "in_progress");
         const usedRanges = new Map();
         for (const task of immutableTasks) addRange(usedRanges, task.materialId, task.rangeStart, task.rangeEnd);
-        const cursors = new Map(input.materials.map((material) => [material.id, material.currentValue]));
+        const cursors = new Map(activeMaterials.map((material) => [material.id, material.currentValue]));
         const generated = [];
-        const taskIndex = new Map();
         const blocksByDate = new Map();
         const warnings = [];
 
@@ -1002,45 +1086,53 @@
           blocksByDate.set(date, availableBlocks(input, date));
         }
 
-        for (const material of input.materials.filter((item) => item.active !== false)) {
+        if (activeMaterials.length === 0) {
+          warnings.push({ code: "no_materials", materialId: "", message: "教材を追加すると、この欄に学習予定が作られます。" });
+        }
+
+        const hasStudyBlocks = dates.some((date) => (blocksByDate.get(date) || []).length > 0);
+        if (!hasStudyBlocks) {
+          warnings.push({ code: "no_schedule", materialId: "", message: "生活時間に学習枠を追加すると、教材を割り当てられます。" });
+        }
+
+        for (const material of activeMaterials) {
           const capacity = dates
             .filter((date) => date <= material.deadline)
             .flatMap((date) => blocksByDate.get(date) || [])
             .filter((block) => contextFits(material.context, block.context))
-            .reduce((sum, block) => sum + block.minutes, 0);
-          const required = Math.max(0, material.endValue - material.currentValue) * minutesPerUnit(material) * 0.65;
+            .reduce((sum, block) => sum + Math.max(0, block.minutes - block.usedMinutes), 0);
+          const required = Math.max(0, material.endValue - material.currentValue) * minutesPerUnit(material);
           if (required > capacity) {
             warnings.push({ code: "infeasible_deadline", materialId: material.id, message: `${material.name} は期限までに収まりにくい見込みです。` });
           }
         }
 
         for (const date of dates) {
-          for (const phase of ["minimum", "standard", "extra"]) {
-            const touched = new Set();
-            for (const block of blocksByDate.get(date) || []) {
-              const limit = phase === "extra" ? block.minutes : Math.floor(block.minutes * input.settings.planningBufferRatio);
-              while (block.usedMinutes < limit) {
-                const material = chooseMaterial(input.materials, cursors, usedRanges, date, block, phase, touched);
-                if (!material) break;
-                const qty = Math.min(material.minChunk, material.endValue - cursors.get(material.id));
-                const minutes = qty * minutesPerUnit(material);
-                if (minutes <= 0 || block.usedMinutes + minutes > block.minutes) break;
-                const range = nextRange(material, qty, cursors, usedRanges);
-                if (!range) {
-                  touched.add(`${phase}:${material.id}`);
-                  continue;
-                }
-                const task = addTask(generated, taskIndex, date, block, material, phase, range, qty, minutes);
-                block.usedMinutes += minutes;
-                cursors.set(material.id, range.end);
-                addRange(usedRanges, material.id, range.start, range.end);
-                touched.add(`${phase}:${material.id}`);
-              }
+          for (const block of blocksByDate.get(date) || []) {
+            while (block.usedMinutes < block.minutes) {
+              const remainingMinutes = block.minutes - block.usedMinutes;
+              const material = chooseMaterial(activeMaterials, cursors, usedRanges, date, block, remainingMinutes);
+              if (!material) break;
+              const qty = schedulableQty(material, remainingMinutes, cursors);
+              const minutes = qty * minutesPerUnit(material);
+              const range = nextRange(material, qty, cursors, usedRanges);
+              if (!range || minutes <= 0 || block.usedMinutes + minutes > block.minutes + 0.001) break;
+
+              addTask(generated, date, block, material, range, qty, minutes);
+              block.usedMinutes += minutes;
+              cursors.set(material.id, range.end);
+              addRange(usedRanges, material.id, range.start, range.end);
             }
           }
         }
 
-        const tasks = [...immutableTasks, ...generated].sort((a, b) => `${a.date}:${a.materialId}`.localeCompare(`${b.date}:${b.materialId}`));
+        if (activeMaterials.length > 0 && hasStudyBlocks && generated.length === 0) {
+          warnings.push({ code: "no_generated_tasks", materialId: "", message: "教材の場所と生活時間の場所が合っているか、期限・分/単位・最小分割量を確認してください。" });
+        }
+
+        const tasks = [...immutableTasks, ...generated].sort((a, b) =>
+          `${a.date}:${a.startAt || ""}:${a.materialId}`.localeCompare(`${b.date}:${b.startAt || ""}:${b.materialId}`),
+        );
         return {
           tasks,
           changedTaskCount: generated.length,
@@ -1094,53 +1186,40 @@
         return blocks;
       }
 
-      function chooseMaterial(materials, cursors, usedRanges, date, block, phase, touched) {
+      function chooseMaterial(materials, cursors, usedRanges, date, block, remainingMinutes) {
         return materials
+          .map((material) => ({ ...material, cursor: cursors.get(material.id) ?? material.currentValue }))
           .filter((material) => material.active !== false)
-          .filter((material) => cursors.get(material.id) < material.endValue)
+          .filter((material) => material.cursor < material.endValue)
           .filter((material) => contextFits(material.context, block.context))
-          .filter((material) => !touched.has(`${phase}:${material.id}`))
-          .filter((material) => nextRange(material, material.minChunk, cursors, usedRanges))
+          .filter((material) => schedulableQty(material, remainingMinutes, cursors) > 0)
+          .filter((material) => nextRange(material, schedulableQty(material, remainingMinutes, cursors), cursors, usedRanges))
           .sort((a, b) => score(b, date, block) - score(a, date, block))[0] || null;
       }
 
-      function addTask(generated, taskIndex, date, block, material, phase, range, qty, minutes) {
-        const key = `${date}:${block.id}:${material.id}`;
-        let task = taskIndex.get(key);
-        if (!task) {
-          task = {
-            id: `planned:${key}`,
-            date,
-            slotId: block.id,
-            materialId: material.id,
-            materialName: material.name,
-            subject: material.subject,
-            rangeStart: range.start,
-            rangeEnd: range.end,
-            unitType: material.unitType,
-            minimumQty: 0,
-            standardQty: 0,
-            extraQty: 0,
-            estimatedMinutes: 0,
-            status: "planned",
-            locked: false
-          };
-          taskIndex.set(key, task);
-          generated.push(task);
-        }
-        task.rangeEnd = Math.max(task.rangeEnd, range.end);
-        if (phase === "minimum") {
-          task.minimumQty += qty;
-          task.standardQty = Math.max(task.standardQty, task.minimumQty);
-          task.extraQty = Math.max(task.extraQty, task.standardQty);
-        }
-        if (phase === "standard") {
-          task.standardQty += qty;
-          task.extraQty = Math.max(task.extraQty, task.standardQty);
-        }
-        if (phase === "extra") task.extraQty += qty;
-        task.estimatedMinutes += minutes;
-        return task;
+      function addTask(generated, date, block, material, range, qty, minutes) {
+        const startAt = block.startAt + block.usedMinutes * 60000;
+        const endAt = startAt + minutes * 60000;
+        generated.push({
+          id: `planned:${date}:${block.id}:${material.id}:${generated.length}`,
+          date,
+          slotId: block.id,
+          blockLabel: block.label,
+          materialId: material.id,
+          materialName: material.name,
+          subject: material.subject,
+          rangeStart: range.start,
+          rangeEnd: range.end,
+          unitType: material.unitType,
+          minimumQty: qty,
+          standardQty: qty,
+          extraQty: qty,
+          estimatedMinutes: minutes,
+          startAt: new Date(startAt).toISOString(),
+          endAt: new Date(endAt).toISOString(),
+          status: "planned",
+          locked: false
+        });
       }
 
       function nextRange(material, qty, cursors, usedRanges) {
@@ -1153,6 +1232,25 @@
           start = conflict.end;
         }
         return null;
+      }
+
+      function schedulableQty(material, remainingMinutes, cursors) {
+        const unitMinutes = minutesPerUnit(material);
+        if (unitMinutes <= 0 || remainingMinutes <= 0) return 0;
+        const cursor = cursors.get(material.id) ?? material.currentValue;
+        const remainingUnits = Math.max(0, material.endValue - cursor);
+        if (remainingUnits <= 0) return 0;
+
+        const preferred = Math.min(Math.max(material.minChunk || 1, 0.1), remainingUnits);
+        if (preferred * unitMinutes <= remainingMinutes + 0.001) return roundQty(preferred);
+
+        const step = preferred >= 1 ? 1 : Math.max(0.1, preferred);
+        const fit = Math.floor(Math.min(remainingUnits, remainingMinutes / unitMinutes) / step) * step;
+        return roundQty(Math.max(0, fit));
+      }
+
+      function roundQty(value) {
+        return Number(value.toFixed(2));
       }
 
       function score(material, date, block) {
@@ -1185,7 +1283,7 @@
             <span>rev ${result.schedulerRevision}</span>
           </section>
           <section class="task-list" aria-label="Planned tasks">
-            ${plannedTasks.slice(0, 10).map(taskCard).join("")}
+            ${plannedTasks.length === 0 ? `<div class="empty-state">教材と生活時間を追加すると、ここに日付・時間つきの予定が表示されます。</div>` : plannedTasks.slice(0, 18).map(taskCard).join("")}
           </section>
           <section class="two-column">
             <div class="panel"><h2>科目別予定時間</h2><div class="bars">
@@ -1200,11 +1298,27 @@
         `;
 
         document.getElementById("material-list").innerHTML = planner.materials.map((material) => `
-          <div><b>${escapeHtml(material.subject)}</b><span>${escapeHtml(material.name)}</span><small>${material.currentValue}〜${material.endValue}${escapeHtml(material.unitType)}</small></div>
+          <div>
+            <b>${escapeHtml(material.subject)}</b>
+            <span>${escapeHtml(material.name)}</span>
+            <small>${material.currentValue}〜${material.endValue}${escapeHtml(material.unitType)}</small>
+            <span class="item-actions">
+              <button type="button" data-material-action="edit" data-material-id="${escapeHtml(material.id)}">編集</button>
+              <button type="button" data-material-action="delete" data-material-id="${escapeHtml(material.id)}">削除</button>
+            </span>
+          </div>
         `).join("");
 
         document.getElementById("schedule-list").innerHTML = planner.scheduleTemplates.map((block) => `
-          <div><b>${weekdays[block.weekday]}曜</b><span>${escapeHtml(block.label)}</span><small>${block.startTime}〜${block.endTime}</small></div>
+          <div>
+            <b>${weekdays[block.weekday]}曜</b>
+            <span>${escapeHtml(block.label)}</span>
+            <small>${block.startTime}〜${block.endTime}</small>
+            <span class="item-actions">
+              <button type="button" data-schedule-action="edit" data-schedule-id="${escapeHtml(block.id)}">編集</button>
+              <button type="button" data-schedule-action="delete" data-schedule-id="${escapeHtml(block.id)}">削除</button>
+            </span>
+          </div>
         `).join("");
       }
 
@@ -1218,6 +1332,11 @@
             <div class="task-main">
               <span class="subject">${escapeHtml(task.subject)}</span>
               <h3>${escapeHtml(task.materialName)}</h3>
+              <div class="task-meta">
+                <span>${formatDateLabel(task.date)}</span>
+                <span>${formatTimeRange(task)}</span>
+                <span>${escapeHtml(task.blockLabel || "学習枠")}</span>
+              </div>
               <p>${task.rangeStart}〜${task.rangeEnd}${escapeHtml(task.unitType)} / ${Math.round(task.estimatedMinutes)}分</p>
             </div>
             <div class="thresholds" aria-label="Thresholds">
@@ -1227,6 +1346,21 @@
             </div>
           </article>
         `;
+      }
+
+      function formatDateLabel(date) {
+        const day = weekdays[new Date(`${date}T00:00:00`).getDay()];
+        return `${date.slice(5).replace("-", "/")}(${day})`;
+      }
+
+      function formatTimeRange(task) {
+        if (!task.startAt || !task.endAt) return "時間未設定";
+        return `${timeLabel(task.startAt)}〜${timeLabel(task.endAt)}`;
+      }
+
+      function timeLabel(value) {
+        const date = new Date(value);
+        return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
       }
 
       function addRange(map, materialId, start, end) {
@@ -1291,21 +1425,9 @@
         return `${prefix}:${Date.now()}:${Math.random().toString(16).slice(2)}`;
       }
 
-      document.querySelectorAll("[data-panel]").forEach((button) => {
-        button.addEventListener("click", () => {
-          document.querySelectorAll("[data-panel]").forEach((item) => item.classList.remove("active"));
-          button.classList.add("active");
-          for (const id of ["today-panel", "materials-panel", "schedule-panel"]) {
-            document.getElementById(id).hidden = id !== `${button.dataset.panel}-panel`;
-          }
-        });
-      });
-
-      document.getElementById("material-form").addEventListener("submit", (event) => {
-        event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        planner.materials.push({
-          id: createId("material"),
+      function materialFromForm(data, id) {
+        return {
+          id,
           subject: formValue(data, "subject"),
           name: formValue(data, "name"),
           phase: formValue(data, "phase"),
@@ -1321,18 +1443,12 @@
           initialMinutesPerUnit: formNumber(data, "minutesPerUnit"),
           estimatedMinutesPerUnit: formNumber(data, "minutesPerUnit"),
           active: true
-        });
-        event.currentTarget.reset();
-        savePlanner();
-        render();
-        document.querySelector('[data-panel="today"]').click();
-      });
+        };
+      }
 
-      document.getElementById("schedule-form").addEventListener("submit", (event) => {
-        event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        planner.scheduleTemplates.push({
-          id: createId("slot"),
+      function scheduleFromForm(data, id) {
+        return {
+          id,
           weekday: formNumber(data, "weekday"),
           startTime: formValue(data, "startTime"),
           endTime: formValue(data, "endTime"),
@@ -1341,12 +1457,160 @@
           extendable: data.get("extendable") === "on",
           label: formValue(data, "label"),
           active: true
+        };
+      }
+
+      function fillMaterialForm(material) {
+        const form = document.getElementById("material-form");
+        setField(form, "subject", material.subject);
+        setField(form, "name", material.name);
+        setField(form, "phase", material.phase);
+        setField(form, "unitType", material.unitType);
+        setField(form, "currentValue", material.currentValue);
+        setField(form, "endValue", material.endValue);
+        setField(form, "startValue", material.startValue);
+        setField(form, "deadline", material.deadline);
+        setField(form, "subjectPriority", material.subjectPriority);
+        setField(form, "materialPriority", material.materialPriority);
+        setField(form, "context", material.context);
+        setField(form, "minChunk", material.minChunk);
+        setField(form, "minutesPerUnit", minutesPerUnit(material));
+        editingMaterialId = material.id;
+        document.getElementById("material-submit-button").textContent = "更新して再計算";
+        document.getElementById("cancel-material-edit").hidden = false;
+        document.querySelector('[data-panel="materials"]').click();
+        form.querySelector('[name="subject"]').focus();
+      }
+
+      function fillScheduleForm(block) {
+        const form = document.getElementById("schedule-form");
+        setField(form, "label", block.label);
+        setField(form, "weekday", block.weekday);
+        setField(form, "startTime", block.startTime);
+        setField(form, "endTime", block.endTime);
+        setField(form, "context", block.context);
+        setField(form, "focusLevel", block.focusLevel);
+        form.elements.extendable.checked = Boolean(block.extendable);
+        editingScheduleId = block.id;
+        document.getElementById("schedule-submit-button").textContent = "更新して再計算";
+        document.getElementById("cancel-schedule-edit").hidden = false;
+        document.querySelector('[data-panel="schedule"]').click();
+        form.querySelector('[name="label"]').focus();
+      }
+
+      function setField(form, name, value) {
+        form.elements[name].value = value ?? "";
+      }
+
+      function resetMaterialEditing() {
+        editingMaterialId = "";
+        document.getElementById("material-form").reset();
+        document.getElementById("material-submit-button").textContent = "追加して再計算";
+        document.getElementById("cancel-material-edit").hidden = true;
+      }
+
+      function resetScheduleEditing() {
+        editingScheduleId = "";
+        document.getElementById("schedule-form").reset();
+        document.getElementById("schedule-submit-button").textContent = "追加して再計算";
+        document.getElementById("cancel-schedule-edit").hidden = true;
+      }
+
+      function removeTasksForSchedule(blockId) {
+        planner.existingTasks = planner.existingTasks.filter((task) => {
+          const slotId = String(task.slotId || "");
+          return slotId !== blockId && !slotId.endsWith(`:${blockId}`);
         });
-        event.currentTarget.reset();
+      }
+
+      document.querySelectorAll("[data-panel]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-panel]").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          for (const id of ["today-panel", "materials-panel", "schedule-panel"]) {
+            document.getElementById(id).hidden = id !== `${button.dataset.panel}-panel`;
+          }
+        });
+      });
+
+      document.getElementById("material-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        const id = editingMaterialId || createId("material");
+        const nextMaterial = materialFromForm(data, id);
+        const existingIndex = planner.materials.findIndex((material) => material.id === id);
+        if (existingIndex >= 0) {
+          planner.materials[existingIndex] = nextMaterial;
+        } else {
+          planner.materials.push(nextMaterial);
+        }
+        resetMaterialEditing();
         savePlanner();
         render();
         document.querySelector('[data-panel="today"]').click();
       });
+
+      document.getElementById("schedule-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        const id = editingScheduleId || createId("slot");
+        const nextBlock = scheduleFromForm(data, id);
+        const existingIndex = planner.scheduleTemplates.findIndex((block) => block.id === id);
+        if (existingIndex >= 0) {
+          planner.scheduleTemplates[existingIndex] = nextBlock;
+        } else {
+          planner.scheduleTemplates.push(nextBlock);
+        }
+        resetScheduleEditing();
+        savePlanner();
+        render();
+        document.querySelector('[data-panel="today"]').click();
+      });
+
+      document.getElementById("material-list").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-material-action]");
+        if (!button) return;
+        const id = button.dataset.materialId;
+        const material = planner.materials.find((item) => item.id === id);
+        if (!material) return;
+
+        if (button.dataset.materialAction === "edit") {
+          fillMaterialForm(material);
+          return;
+        }
+
+        if (confirm(`${material.name} を削除しますか？`)) {
+          planner.materials = planner.materials.filter((item) => item.id !== id);
+          planner.existingTasks = planner.existingTasks.filter((task) => task.materialId !== id);
+          if (editingMaterialId === id) resetMaterialEditing();
+          savePlanner();
+          render();
+        }
+      });
+
+      document.getElementById("schedule-list").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-schedule-action]");
+        if (!button) return;
+        const id = button.dataset.scheduleId;
+        const block = planner.scheduleTemplates.find((item) => item.id === id);
+        if (!block) return;
+
+        if (button.dataset.scheduleAction === "edit") {
+          fillScheduleForm(block);
+          return;
+        }
+
+        if (confirm(`${block.label} を削除しますか？`)) {
+          planner.scheduleTemplates = planner.scheduleTemplates.filter((item) => item.id !== id);
+          removeTasksForSchedule(id);
+          if (editingScheduleId === id) resetScheduleEditing();
+          savePlanner();
+          render();
+        }
+      });
+
+      document.getElementById("cancel-material-edit").addEventListener("click", resetMaterialEditing);
+      document.getElementById("cancel-schedule-edit").addEventListener("click", resetScheduleEditing);
 
       document.getElementById("soft-end").addEventListener("change", (event) => {
         if (event.target.value) {
