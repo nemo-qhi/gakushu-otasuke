@@ -283,6 +283,51 @@
         grid-column: 1 / -1;
       }
 
+      .current-code-card {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--soft);
+      }
+
+      .current-code-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .current-code-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 92px;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .current-code-value {
+        min-height: 36px;
+        padding: 8px 10px;
+        border-radius: 7px;
+        background: var(--panel);
+        color: var(--foreground);
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 15px;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      .code-copy-button {
+        min-height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
       .summary-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -703,6 +748,13 @@
           <p class="eyebrow">Sync</p>
           <h2>個人コードで同期</h2>
           <p id="transfer-status">個人コードを作成、または既存コードを開くと、この端末の変更が同じコードの保存箱へ同期されます。</p>
+          <div class="current-code-card" aria-live="polite">
+            <span class="current-code-label">現在使用中の個人コード</span>
+            <div class="current-code-row">
+              <span class="current-code-value" id="current-cloud-code">未設定</span>
+              <button class="code-copy-button" type="button" id="copy-cloud-code">コピー</button>
+            </div>
+          </div>
         </div>
         <div class="transfer-actions">
           <button class="primary-action" type="button" id="create-cloud-code">個人コードを生成</button>
@@ -866,6 +918,26 @@
 
       function setTransferStatus(message) {
         document.getElementById("transfer-status").textContent = message;
+      }
+
+      function setCurrentCloudCode(code) {
+        const formatted = formatCloudCode(code);
+        document.getElementById("current-cloud-code").textContent = formatted || "未設定";
+      }
+
+      async function copyCurrentCloudCode() {
+        const value = document.getElementById("current-cloud-code").textContent;
+        if (!value || value === "未設定") {
+          setTransferStatus("まだ個人コードがありません。先に生成するか、既存コードを開いてください。");
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(value);
+          setTransferStatus(`個人コード ${value} をコピーしました。`);
+        } catch {
+          setTransferStatus("コピーできませんでした。表示されている個人コードを手動で選択してください。");
+        }
       }
 
       function encodeTransferCode() {
@@ -1330,11 +1402,13 @@
         input.value = formatted;
         input.focus();
         input.select();
+        setCurrentCloudCode(code);
         setTransferStatus(`個人コード ${formatted} を作成しました。オンライン保存を試しています。`);
         window.dispatchEvent(new CustomEvent("jukenbanso:cloud-code-created", { detail: { code } }));
       }
 
       document.getElementById("create-cloud-code").addEventListener("click", createCloudCodeImmediately);
+      document.getElementById("copy-cloud-code").addEventListener("click", copyCurrentCloudCode);
 
       window.jukenbansoApp = {
         getPlanner: () => structuredClone(planner),
@@ -1345,7 +1419,8 @@
         },
         getTheme: loadTheme,
         setTheme: applyTheme,
-        setStatus: setTransferStatus
+        setStatus: setTransferStatus,
+        setCloudCode: setCurrentCloudCode
       };
 
       render();

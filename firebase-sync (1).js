@@ -33,7 +33,10 @@ let readyPromise;
 let saveTimer = 0;
 let lastSavedBody = "";
 
-if (activeCode) syncInput.value = formatPersonalCode(activeCode);
+if (activeCode) {
+  syncInput.value = formatPersonalCode(activeCode);
+  setCurrentCode(activeCode);
+}
 
 window.addEventListener("jukenbanso:cloud-code-created", (event) => {
   createCloudCodeImproved(event.detail?.code).catch((error) => {
@@ -148,6 +151,7 @@ async function connectToCode(code) {
   activeCode = normalizePersonalCode(code);
   activeDocId = await hashPersonalCode(activeCode);
   localStorage.setItem(storedCodeKey, activeCode);
+  setCurrentCode(activeCode);
 }
 
 function scheduleCloudSave() {
@@ -196,6 +200,10 @@ function currentSnapshotBody() {
 
 function setStatus(message) {
   window.jukenbansoApp.setStatus(message);
+}
+
+function setCurrentCode(code) {
+  window.jukenbansoApp.setCloudCode?.(code);
 }
 
 function normalizePersonalCode(code) {
