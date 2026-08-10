@@ -1188,16 +1188,30 @@
 
       <section id="schedule-panel" class="form-layout" hidden>
         <div class="management-column">
-          <div class="entry-form">
-            <div>
-              <p class="eyebrow">Life</p>
-              <h2>生活時間</h2>
-            </div>
+          <div class="panel">
+            <h2>日々の学習時間記録</h2>
+            <form class="inline-log-form" id="study-log-form">
+              <div class="form-grid">
+                <label>日付<input name="date" type="date" required /></label>
+                <label>学習時間<input name="minutes" min="1" step="1" type="number" value="60" required /></label>
+              </div>
+              <label>メモ<input name="label" placeholder="自習室、朝学習など" /></label>
+              <button class="primary-action" type="submit">記録する</button>
+            </form>
+            <div id="study-log-summary" class="log-summary"></div>
+            <div class="compact-list" id="study-log-list"></div>
+          </div>
+        </div>
+
+        <div class="management-column">
+          <div class="panel">
+            <h2>生活時間：登録済み学習枠</h2>
             <div class="form-grid">
               <label>ソフト終了<input id="soft-end" type="time" /></label>
               <label>ハード停止<input id="hard-stop" type="time" /></label>
             </div>
-            <button class="secondary-action" type="button" id="reset-button">架空データへ戻す</button>
+            <div class="compact-list" id="schedule-list"></div>
+            <button class="secondary-action" type="button" id="reset-button">初期状態に戻す</button>
           </div>
 
           <form class="entry-form" id="schedule-form">
@@ -1245,26 +1259,6 @@
               <button class="secondary-action" type="button" id="cancel-schedule-edit" hidden>編集をやめる</button>
             </div>
           </form>
-        </div>
-
-        <div class="management-column">
-          <div class="panel">
-            <h2>登録済み学習枠</h2>
-            <div class="compact-list" id="schedule-list"></div>
-          </div>
-          <div class="panel">
-            <h2>学習時間の記録</h2>
-            <form class="inline-log-form" id="study-log-form">
-              <div class="form-grid">
-                <label>日付<input name="date" type="date" required /></label>
-                <label>学習時間<input name="minutes" min="1" step="1" type="number" value="60" required /></label>
-              </div>
-              <label>メモ<input name="label" placeholder="自習室、朝学習など" /></label>
-              <button class="primary-action" type="submit">記録する</button>
-            </form>
-            <div id="study-log-summary" class="log-summary"></div>
-            <div class="compact-list" id="study-log-list"></div>
-          </div>
         </div>
       </section>
     </main>
