@@ -536,6 +536,35 @@
         min-height: 20px;
       }
 
+      .task-progress {
+        display: grid;
+        gap: 5px;
+        min-height: 58px;
+        padding: 7px 8px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .task-progress input {
+        min-height: 32px;
+        padding: 5px 7px;
+        font-size: 13px;
+      }
+
+      .progress-action {
+        min-height: 58px;
+        border: 1px solid rgba(47, 104, 189, 0.38);
+        border-radius: 7px;
+        background: #eef4fb;
+        color: #1f4f94;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
       .thresholds {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -571,6 +600,12 @@
 
       .panel {
         min-height: 220px;
+      }
+
+      .management-column {
+        display: grid;
+        gap: 12px;
+        align-content: start;
       }
 
       .entry-form {
@@ -802,6 +837,75 @@
         color: #1f4f94;
       }
 
+      .material-workspace {
+        display: grid;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .material-card {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .material-card header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .material-card strong {
+        overflow-wrap: anywhere;
+      }
+
+      .mini-section {
+        display: grid;
+        gap: 6px;
+      }
+
+      .mini-section h3 {
+        margin: 0;
+        color: var(--foreground);
+        font-size: 13px;
+      }
+
+      .mini-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .mini-row {
+        display: grid;
+        grid-template-columns: 82px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        min-height: 40px;
+        padding: 8px;
+        border: 1px solid rgba(135, 122, 98, 0.2);
+        border-radius: 7px;
+        background: var(--panel);
+        font-size: 12px;
+      }
+
+      .mini-row b,
+      .mini-row span {
+        overflow-wrap: anywhere;
+      }
+
+      .mini-row b {
+        color: var(--foreground);
+      }
+
+      .mini-row span {
+        color: var(--muted);
+      }
+
       .editing-note {
         margin: 8px 0 0;
         color: var(--blue);
@@ -965,139 +1069,155 @@
       <section id="today-panel"></section>
 
       <section id="materials-panel" class="form-layout" hidden>
-        <form class="entry-form" id="material-form">
-          <div>
-            <p class="eyebrow">Material</p>
-            <h2 id="material-form-title">教材を追加</h2>
-            <p class="editing-note" id="material-editing-note" hidden></p>
-          </div>
-          <label>
-            教科
-            <select name="subject" required>
-              <option>国語</option>
-              <option>数学</option>
-              <option selected>英語</option>
-              <option>社会</option>
-              <option>理科</option>
-              <option>その他</option>
-            </select>
-          </label>
-          <label>教材名<input name="name" placeholder="英単語ターゲット" required /></label>
-          <div class="form-grid">
-            <label>フェーズ<input name="phase" value="初見" required /></label>
+        <div class="management-column">
+          <form class="entry-form" id="material-form">
+            <div>
+              <p class="eyebrow">Material</p>
+              <h2 id="material-form-title">教材を追加</h2>
+              <p class="editing-note" id="material-editing-note" hidden></p>
+            </div>
             <label>
-              単位
-              <select name="unitType">
-                <option>題</option>
-                <option>ページ</option>
-                <option>語</option>
-                <option>セット</option>
-                <option>回</option>
+              教科
+              <select name="subject" required>
+                <option>国語</option>
+                <option>数学</option>
+                <option selected>英語</option>
+                <option>社会</option>
+                <option>理科</option>
+                <option>その他</option>
               </select>
             </label>
-            <label>現在位置<input name="currentValue" value="1" min="0" type="number" required /></label>
-            <label>終了位置<input name="endValue" value="40" min="1" type="number" required /></label>
-            <label>開始位置<input name="startValue" value="1" min="0" type="number" required /></label>
-            <label>期限<input name="deadline" value="2026-08-31" type="date" required /></label>
-            <label>科目優先度<input name="subjectPriority" value="4" max="5" min="1" type="number" /></label>
-            <label>教材優先度<input name="materialPriority" value="4" max="5" min="1" type="number" /></label>
-            <label>
-              実施曜日
-              <span class="weekday-picker" id="material-weekdays">
-                <label><input name="weekdays" type="checkbox" value="0" checked />日</label>
-                <label><input name="weekdays" type="checkbox" value="1" checked />月</label>
-                <label><input name="weekdays" type="checkbox" value="2" checked />火</label>
-                <label><input name="weekdays" type="checkbox" value="3" checked />水</label>
-                <label><input name="weekdays" type="checkbox" value="4" checked />木</label>
-                <label><input name="weekdays" type="checkbox" value="5" checked />金</label>
-                <label><input name="weekdays" type="checkbox" value="6" checked />土</label>
-              </span>
-            </label>
-            <label>
-              場所
-              <select name="context">
-                <option value="mobile">通学</option>
-                <option value="desk" selected>机</option>
-                <option value="either">どちらでも可</option>
-              </select>
-            </label>
-            <label>最小分割量<input name="minChunk" value="2" min="0.1" step="0.1" type="number" /></label>
-            <label>分 / 単位<input name="minutesPerUnit" value="10" min="0.1" step="0.1" type="number" /></label>
-          </div>
-          <div class="form-buttons">
-            <button class="primary-action" type="submit" id="material-submit-button">追加して再計算</button>
-            <button class="secondary-action" type="button" id="cancel-material-edit" hidden>編集をやめる</button>
-          </div>
-        </form>
+            <label>教材名<input name="name" placeholder="英単語ターゲット" required /></label>
+            <div class="form-grid">
+              <label>フェーズ<input name="phase" value="初見" required /></label>
+              <label>
+                単位
+                <select name="unitType">
+                  <option>題</option>
+                  <option>ページ</option>
+                  <option>語</option>
+                  <option>セット</option>
+                  <option>回</option>
+                </select>
+              </label>
+              <label>現在位置<input name="currentValue" value="1" min="0" type="number" required /></label>
+              <label>終了位置<input name="endValue" value="40" min="1" type="number" required /></label>
+              <label>開始位置<input name="startValue" value="1" min="0" type="number" required /></label>
+              <label>期限<input name="deadline" value="2026-08-31" type="date" required /></label>
+              <label>科目優先度<input name="subjectPriority" value="4" max="5" min="1" type="number" /></label>
+              <label>教材優先度<input name="materialPriority" value="4" max="5" min="1" type="number" /></label>
+              <label>
+                実施曜日
+                <span class="weekday-picker" id="material-weekdays">
+                  <label><input name="weekdays" type="checkbox" value="0" checked />日</label>
+                  <label><input name="weekdays" type="checkbox" value="1" checked />月</label>
+                  <label><input name="weekdays" type="checkbox" value="2" checked />火</label>
+                  <label><input name="weekdays" type="checkbox" value="3" checked />水</label>
+                  <label><input name="weekdays" type="checkbox" value="4" checked />木</label>
+                  <label><input name="weekdays" type="checkbox" value="5" checked />金</label>
+                  <label><input name="weekdays" type="checkbox" value="6" checked />土</label>
+                </span>
+              </label>
+              <label>
+                場所
+                <select name="context">
+                  <option value="mobile">通学</option>
+                  <option value="desk" selected>机</option>
+                  <option value="either">どちらでも可</option>
+                </select>
+              </label>
+              <label>最小分割量<input name="minChunk" value="2" min="0.1" step="0.1" type="number" /></label>
+              <label>分 / 単位<input name="minutesPerUnit" value="10" min="0.1" step="0.1" type="number" /></label>
+            </div>
+            <div class="form-buttons">
+              <button class="primary-action" type="submit" id="material-submit-button">追加して再計算</button>
+              <button class="secondary-action" type="button" id="cancel-material-edit" hidden>編集をやめる</button>
+            </div>
+          </form>
+        </div>
 
-        <div class="panel">
-          <h2>登録済み教材</h2>
-          <div class="compact-list" id="material-list"></div>
+        <div class="management-column">
+          <div class="panel">
+            <h2>登録済み教材</h2>
+            <div class="compact-list" id="material-list"></div>
+          </div>
+          <div class="panel">
+            <h2>教材別の予定と完了</h2>
+            <div class="material-workspace" id="material-workspace"></div>
+          </div>
         </div>
       </section>
 
       <section id="schedule-panel" class="form-layout" hidden>
-        <div class="entry-form">
-          <div>
-            <p class="eyebrow">Life</p>
-            <h2>生活時間</h2>
+        <div class="management-column">
+          <div class="entry-form">
+            <div>
+              <p class="eyebrow">Life</p>
+              <h2>生活時間</h2>
+            </div>
+            <div class="form-grid">
+              <label>ソフト終了<input id="soft-end" type="time" /></label>
+              <label>ハード停止<input id="hard-stop" type="time" /></label>
+            </div>
+            <button class="secondary-action" type="button" id="reset-button">架空データへ戻す</button>
           </div>
-          <div class="form-grid">
-            <label>ソフト終了<input id="soft-end" type="time" /></label>
-            <label>ハード停止<input id="hard-stop" type="time" /></label>
-          </div>
-          <button class="secondary-action" type="button" id="reset-button">架空データへ戻す</button>
+
+          <form class="entry-form" id="schedule-form">
+            <div>
+              <p class="eyebrow">Study Block</p>
+              <h2 id="schedule-form-title">学習枠を追加</h2>
+              <p class="editing-note" id="schedule-editing-note" hidden></p>
+            </div>
+            <label>ラベル<input name="label" placeholder="帰宅後" required /></label>
+            <div class="form-grid">
+              <label>
+                曜日
+                <select name="weekday">
+                  <option value="0">日</option>
+                  <option value="1" selected>月</option>
+                  <option value="2">火</option>
+                  <option value="3">水</option>
+                  <option value="4">木</option>
+                  <option value="5">金</option>
+                  <option value="6">土</option>
+                </select>
+              </label>
+              <label>開始<input name="startTime" type="time" value="19:00" required /></label>
+              <label>終了<input name="endTime" type="time" value="21:00" required /></label>
+              <label>
+                場所
+                <select name="context">
+                  <option value="mobile">通学</option>
+                  <option value="desk" selected>机</option>
+                  <option value="either">どちらでも可</option>
+                </select>
+              </label>
+              <label>
+                集中度
+                <select name="focusLevel">
+                  <option value="low">低</option>
+                  <option value="medium" selected>中</option>
+                  <option value="high">高</option>
+                </select>
+              </label>
+              <label class="check-row"><input name="extendable" type="checkbox" />延長可</label>
+            </div>
+            <div class="form-buttons">
+              <button class="primary-action" type="submit" id="schedule-submit-button">追加して再計算</button>
+              <button class="secondary-action" type="button" id="cancel-schedule-edit" hidden>編集をやめる</button>
+            </div>
+          </form>
         </div>
 
-        <form class="entry-form" id="schedule-form">
-          <div>
-            <p class="eyebrow">Study Block</p>
-            <h2 id="schedule-form-title">学習枠を追加</h2>
-            <p class="editing-note" id="schedule-editing-note" hidden></p>
+        <div class="management-column">
+          <div class="panel">
+            <h2>登録済み学習枠</h2>
+            <div class="compact-list" id="schedule-list"></div>
           </div>
-          <label>ラベル<input name="label" placeholder="帰宅後" required /></label>
-          <div class="form-grid">
-            <label>
-              曜日
-              <select name="weekday">
-                <option value="0">日</option>
-                <option value="1" selected>月</option>
-                <option value="2">火</option>
-                <option value="3">水</option>
-                <option value="4">木</option>
-                <option value="5">金</option>
-                <option value="6">土</option>
-              </select>
-            </label>
-            <label>開始<input name="startTime" type="time" value="19:00" required /></label>
-            <label>終了<input name="endTime" type="time" value="21:00" required /></label>
-            <label>
-              場所
-              <select name="context">
-                <option value="mobile">通学</option>
-                <option value="desk" selected>机</option>
-                <option value="either">どちらでも可</option>
-              </select>
-            </label>
-            <label>
-              集中度
-              <select name="focusLevel">
-                <option value="low">低</option>
-                <option value="medium" selected>中</option>
-                <option value="high">高</option>
-              </select>
-            </label>
-            <label class="check-row"><input name="extendable" type="checkbox" />延長可</label>
+          <div class="panel">
+            <h2>生活時間から見た予定</h2>
+            <div class="material-workspace" id="schedule-task-preview"></div>
           </div>
-          <div class="form-buttons">
-            <button class="primary-action" type="submit" id="schedule-submit-button">追加して再計算</button>
-            <button class="secondary-action" type="button" id="cancel-schedule-edit" hidden>編集をやめる</button>
-          </div>
-        </form>
-
-        <div class="panel">
-          <h2>登録済み学習枠</h2>
-          <div class="compact-list" id="schedule-list"></div>
         </div>
       </section>
     </main>
@@ -1126,6 +1246,7 @@
       let planner = loadPlanner();
       let editingMaterialId = "";
       let editingScheduleId = "";
+      let visibleTasksByKey = new Map();
       applyTheme(loadTheme());
 
       function currentDateISO() {
@@ -1501,15 +1622,19 @@
 
       function render() {
         const result = planStudy(planner);
-        const plannedTasks = result.tasks.filter((task) => task.status === "planned");
-        const completedTasks = planner.completedTasks || {};
-        const completedCount = plannedTasks.filter((task) => completedTasks[taskCompletionKey(task)]).length;
+        const allPlannedTasks = result.tasks.filter((task) => task.status === "planned");
+        const plannedTasks = allPlannedTasks.filter((task) => !taskIsCompleted(task));
+        visibleTasksByKey = new Map(plannedTasks.map((task) => [taskCompletionKey(task), task]));
+        const completedRecords = completionRecords();
         const subjectStats = {};
         for (const task of plannedTasks) {
           if (!subjectStats[task.subject]) subjectStats[task.subject] = { minutes: 0, total: 0, done: 0 };
           subjectStats[task.subject].minutes += task.estimatedMinutes;
           subjectStats[task.subject].total += 1;
-          if (completedTasks[taskCompletionKey(task)]) subjectStats[task.subject].done += 1;
+        }
+        for (const record of completedRecords) {
+          if (!subjectStats[record.subject]) subjectStats[record.subject] = { minutes: 0, total: 0, done: 0 };
+          subjectStats[record.subject].done += 1;
         }
 
         document.getElementById("soft-end").value = planner.settings.softEndTime;
@@ -1519,7 +1644,7 @@
             ${metric("変更件数", `${result.changedTaskCount}件`, "blue")}
             ${metric("予定時間", `${result.summary.plannedMinutes}分`, "green")}
             ${metric("警告", `${result.warnings.length}件`, "amber")}
-            ${metric("完了", `${completedCount}/${plannedTasks.length}件`, "slate")}
+            ${metric("完了履歴", `${completedRecords.length}件`, "slate")}
           </section>
           <section class="today-band">
             <div><p class="eyebrow">Today</p><h2>今日以降の自動配分</h2></div>
@@ -1562,6 +1687,8 @@
         `).join("");
 
         document.getElementById("schedule-list").innerHTML = renderScheduleGroups();
+        document.getElementById("material-workspace").innerHTML = renderMaterialWorkspace(result, plannedTasks, completedRecords);
+        document.getElementById("schedule-task-preview").innerHTML = renderScheduleTaskPreview(plannedTasks);
       }
 
       function renderScheduleGroups() {
@@ -1591,15 +1718,97 @@
         }).join("");
       }
 
+      function renderMaterialWorkspace(result, plannedTasks, completedRecords) {
+        if (planner.materials.length === 0) return `<div class="empty-state">教材を追加すると、ここで教材ごとの予定と完了履歴を確認できます。</div>`;
+        const paceByMaterial = new Map(result.paceReports.map((report) => [report.materialId, report]));
+
+        return planner.materials.map((material) => {
+          const upcoming = plannedTasks.filter((task) => task.materialId === material.id).slice(0, 6);
+          const done = completedRecords.filter((record) => record.materialId === material.id).slice(0, 6);
+          const pace = paceByMaterial.get(material.id);
+          const progress = `${material.currentValue} / ${material.endValue}${material.unitType}`;
+          const paceText = pace ? `残り ${pace.remainingUnits}${pace.unitType}・学習日あたり ${pace.unitsPerStudyDay}${pace.unitType}` : "予定計算待ち";
+
+          return `
+            <article class="material-card">
+              <header>
+                <div>
+                  <span class="subject">${escapeHtml(material.subject)}</span>
+                  <strong>${escapeHtml(material.name)}</strong>
+                </div>
+                <small>${escapeHtml(progress)} / ${escapeHtml(weekdayText(normalizeMaterialWeekdays(material)))}</small>
+              </header>
+              <div class="mini-section">
+                <h3>これからの予定</h3>
+                ${upcoming.length === 0 ? `<p class="quiet">この教材の未完了予定はありません。${escapeHtml(paceText)}</p>` : `<div class="mini-list">${upcoming.map(miniTaskRow).join("")}</div>`}
+              </div>
+              <div class="mini-section">
+                <h3>完了したタスク</h3>
+                ${done.length === 0 ? `<p class="quiet">まだ完了履歴はありません。</p>` : `<div class="mini-list">${done.map(completedTaskRow).join("")}</div>`}
+              </div>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function renderScheduleTaskPreview(plannedTasks) {
+        if (plannedTasks.length === 0) return `<div class="empty-state">学習枠を追加すると、その枠に割り当てられる予定が曜日別に表示されます。</div>`;
+
+        return weekdays.map((day, weekday) => {
+          const tasks = plannedTasks
+            .filter((task) => new Date(`${task.date}T00:00:00`).getDay() === weekday)
+            .slice(0, 5);
+          return `
+            <article class="material-card">
+              <header><strong>${day}曜の予定</strong><small>${tasks.length}件</small></header>
+              ${tasks.length === 0 ? `<p class="quiet">予定なし</p>` : `<div class="mini-list">${tasks.map(miniTaskRow).join("")}</div>`}
+            </article>
+          `;
+        }).join("");
+      }
+
+      function miniTaskRow(task) {
+        return `
+          <div class="mini-row">
+            <b>${escapeHtml(formatDateLabel(task.date))}</b>
+            <span>${escapeHtml(task.materialName)} ${task.rangeStart}〜${task.rangeEnd}${escapeHtml(task.unitType)} / ${escapeHtml(formatTimeRange(task))}</span>
+          </div>
+        `;
+      }
+
+      function completedTaskRow(record) {
+        const note = record.partial ? `途中 ${record.rangeStart}〜${record.rangeEnd} / 予定 ${record.plannedRangeEnd}` : `${record.rangeStart}〜${record.rangeEnd}`;
+        return `
+          <div class="mini-row">
+            <b>${escapeHtml(formatDateLabel(record.date))}</b>
+            <span>${escapeHtml(note)}${escapeHtml(record.unitType)} / ${escapeHtml(record.completedAtLabel || "")}</span>
+          </div>
+        `;
+      }
+
+      function completionRecords(materialId = "") {
+        return Object.values(planner.completedTasks || {})
+          .filter((record) => record && typeof record === "object" && record.completedAt)
+          .filter((record) => !materialId || record.materialId === materialId)
+          .map((record) => ({
+            ...record,
+            completedAtLabel: record.completedAt ? timeLabel(record.completedAt) : ""
+          }))
+          .sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt)));
+      }
+
+      function taskIsCompleted(task) {
+        return Boolean(planner.completedTasks?.[taskCompletionKey(task)]);
+      }
+
       function metric(label, value, tone) {
         return `<div class="metric metric-${tone}"><span>${label}</span><strong>${value}</strong></div>`;
       }
 
       function taskCard(task) {
         const key = taskCompletionKey(task);
-        const checked = planner.completedTasks?.[key] ? "checked" : "";
         return `
-          <article class="task-card">
+          <article class="task-card" data-task-key="${escapeHtml(key)}">
             <div class="task-main">
               <span class="subject">${escapeHtml(task.subject)}</span>
               <h3>${escapeHtml(task.materialName)}</h3>
@@ -1612,9 +1821,14 @@
             </div>
             <div class="thresholds" aria-label="Thresholds">
               <label class="task-complete">
-                <input type="checkbox" data-complete-task="${escapeHtml(key)}" ${checked} />
-                完了
+                <input type="checkbox" data-complete-task="${escapeHtml(key)}" />
+                完了して消す
               </label>
+              <label class="task-progress">
+                ここまで
+                <input type="number" min="${task.rangeStart}" max="${task.rangeEnd}" step="0.1" value="${task.rangeEnd}" data-partial-value />
+              </label>
+              <button class="progress-action" type="button" data-partial-task="${escapeHtml(key)}">途中保存</button>
               <span>予定 ${task.standardQty}</span>
               <span>${Math.round(task.estimatedMinutes)}分</span>
             </div>
@@ -1662,6 +1876,46 @@
           task.rangeStart,
           task.rangeEnd
         ].join("|");
+      }
+
+      function completeTask(task, completedUntil) {
+        const material = planner.materials.find((item) => item.id === task.materialId);
+        if (!material) return false;
+
+        const target = Number(completedUntil);
+        if (!Number.isFinite(target)) return false;
+        const doneUntil = roundQty(Math.min(task.rangeEnd, Math.max(task.rangeStart, target)));
+        if (doneUntil <= task.rangeStart) {
+          alert("進んだ位置を入力してください。");
+          return false;
+        }
+
+        const key = taskCompletionKey(task);
+        const ratio = (doneUntil - task.rangeStart) / Math.max(0.001, task.rangeEnd - task.rangeStart);
+        planner.completedTasks = planner.completedTasks || {};
+        planner.completedTasks[key] = {
+          key,
+          date: task.date,
+          slotId: task.slotId,
+          blockLabel: task.blockLabel,
+          materialId: task.materialId,
+          materialName: task.materialName,
+          subject: task.subject,
+          unitType: task.unitType,
+          rangeStart: task.rangeStart,
+          rangeEnd: doneUntil,
+          plannedRangeEnd: task.rangeEnd,
+          estimatedMinutes: Math.round(task.estimatedMinutes * ratio),
+          partial: doneUntil < task.rangeEnd,
+          completedAt: new Date().toISOString()
+        };
+
+        material.currentValue = roundQty(Math.max(Number(material.currentValue) || 0, doneUntil));
+        if (material.currentValue >= material.endValue) material.currentValue = material.endValue;
+        planner.existingTasks = planner.existingTasks.filter((item) => taskCompletionKey(item) !== key);
+        savePlanner();
+        render();
+        return true;
       }
 
       function formatDateLabel(date) {
@@ -1962,14 +2216,20 @@
       document.getElementById("today-panel").addEventListener("change", (event) => {
         const checkbox = event.target.closest("[data-complete-task]");
         if (!checkbox) return;
-        planner.completedTasks = planner.completedTasks || {};
-        if (checkbox.checked) {
-          planner.completedTasks[checkbox.dataset.completeTask] = true;
-        } else {
-          delete planner.completedTasks[checkbox.dataset.completeTask];
-        }
-        savePlanner();
-        render();
+        if (!checkbox.checked) return;
+        const task = visibleTasksByKey.get(checkbox.dataset.completeTask);
+        if (!task) return;
+        completeTask(task, task.rangeEnd);
+      });
+
+      document.getElementById("today-panel").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-partial-task]");
+        if (!button) return;
+        const task = visibleTasksByKey.get(button.dataset.partialTask);
+        const card = button.closest(".task-card");
+        const input = card?.querySelector("[data-partial-value]");
+        if (!task || !input) return;
+        completeTask(task, input.value);
       });
 
       document.getElementById("cancel-material-edit").addEventListener("click", resetMaterialEditing);
