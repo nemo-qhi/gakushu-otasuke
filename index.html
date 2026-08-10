@@ -1241,7 +1241,7 @@
               <label class="check-row"><input name="extendable" type="checkbox" />延長可</label>
             </div>
             <div class="form-buttons">
-              <button class="primary-action" type="submit" id="schedule-submit-button">追加して再計算</button>
+              <button class="primary-action" type="submit" id="schedule-submit-button">学習枠を保存</button>
               <button class="secondary-action" type="button" id="cancel-schedule-edit" hidden>編集をやめる</button>
             </div>
           </form>
@@ -2179,7 +2179,7 @@
         document.getElementById("schedule-form-title").textContent = "学習枠を編集中";
         document.getElementById("schedule-editing-note").textContent = `${block.label} を編集しています。`;
         document.getElementById("schedule-editing-note").hidden = false;
-        document.getElementById("schedule-submit-button").textContent = "更新して再計算";
+        document.getElementById("schedule-submit-button").textContent = "学習枠を更新";
         document.getElementById("cancel-schedule-edit").hidden = false;
         document.querySelector('[data-panel="schedule"]').click();
         form.querySelector('[name="label"]').focus();
@@ -2218,7 +2218,7 @@
         document.getElementById("schedule-form-title").textContent = "学習枠を追加";
         document.getElementById("schedule-editing-note").textContent = "";
         document.getElementById("schedule-editing-note").hidden = true;
-        document.getElementById("schedule-submit-button").textContent = "追加して再計算";
+        document.getElementById("schedule-submit-button").textContent = "学習枠を保存";
         document.getElementById("cancel-schedule-edit").hidden = true;
       }
 
