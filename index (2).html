@@ -613,6 +613,16 @@
         gap: 14px;
       }
 
+      .inline-log-form {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
       .form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -814,6 +824,17 @@
         text-align: right;
       }
 
+      .compact-list small button {
+        min-height: 34px;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--foreground);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
       .item-actions {
         grid-column: 1 / -1;
         display: grid;
@@ -904,6 +925,23 @@
 
       .mini-row span {
         color: var(--muted);
+      }
+
+      .log-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .log-summary span {
+        min-height: 48px;
+        padding: 10px;
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 900;
       }
 
       .editing-note {
@@ -1215,8 +1253,17 @@
             <div class="compact-list" id="schedule-list"></div>
           </div>
           <div class="panel">
-            <h2>生活時間から見た予定</h2>
-            <div class="material-workspace" id="schedule-task-preview"></div>
+            <h2>学習時間の記録</h2>
+            <form class="inline-log-form" id="study-log-form">
+              <div class="form-grid">
+                <label>日付<input name="date" type="date" required /></label>
+                <label>学習時間<input name="minutes" min="1" step="1" type="number" value="60" required /></label>
+              </div>
+              <label>メモ<input name="label" placeholder="自習室、朝学習など" /></label>
+              <button class="primary-action" type="submit">記録する</button>
+            </form>
+            <div id="study-log-summary" class="log-summary"></div>
+            <div class="compact-list" id="study-log-list"></div>
           </div>
         </div>
       </section>
@@ -1240,7 +1287,8 @@
         exceptions: [],
         materials: [],
         existingTasks: [],
-        completedTasks: {}
+        completedTasks: {},
+        studyLogs: []
       };
 
       let planner = loadPlanner();
@@ -1347,7 +1395,8 @@
             ? loaded.materials.map((material) => ({ ...material, weekdays: normalizeMaterialWeekdays(material) }))
             : [],
           existingTasks: Array.isArray(loaded.existingTasks) ? loaded.existingTasks : [],
-          completedTasks: loaded.completedTasks && typeof loaded.completedTasks === "object" ? loaded.completedTasks : {}
+          completedTasks: loaded.completedTasks && typeof loaded.completedTasks === "object" ? loaded.completedTasks : {},
+          studyLogs: Array.isArray(loaded.studyLogs) ? loaded.studyLogs : []
         };
       }
 
@@ -1639,6 +1688,8 @@
 
         document.getElementById("soft-end").value = planner.settings.softEndTime;
         document.getElementById("hard-stop").value = planner.settings.hardStopTime;
+        const studyLogDate = document.querySelector('#study-log-form [name="date"]');
+        if (studyLogDate && !studyLogDate.value) studyLogDate.value = planner.today;
         document.getElementById("today-panel").innerHTML = `
           <section class="summary-grid" aria-label="Scheduler result">
             ${metric("変更件数", `${result.changedTaskCount}件`, "blue")}
@@ -1688,7 +1739,8 @@
 
         document.getElementById("schedule-list").innerHTML = renderScheduleGroups();
         document.getElementById("material-workspace").innerHTML = renderMaterialWorkspace(result, plannedTasks, completedRecords);
-        document.getElementById("schedule-task-preview").innerHTML = renderScheduleTaskPreview(plannedTasks);
+        document.getElementById("study-log-summary").innerHTML = renderStudyLogSummary();
+        document.getElementById("study-log-list").innerHTML = renderStudyLogs();
       }
 
       function renderScheduleGroups() {
@@ -1751,20 +1803,48 @@
         }).join("");
       }
 
-      function renderScheduleTaskPreview(plannedTasks) {
-        if (plannedTasks.length === 0) return `<div class="empty-state">学習枠を追加すると、その枠に割り当てられる予定が曜日別に表示されます。</div>`;
+      function renderStudyLogSummary() {
+        const logs = studyTimeRecords();
+        const today = currentDateISO();
+        const weekStart = addDays(today, -6);
+        const todayMinutes = logs
+          .filter((log) => log.date === today)
+          .reduce((sum, log) => sum + Number(log.minutes || 0), 0);
+        const weekMinutes = logs
+          .filter((log) => log.date >= weekStart && log.date <= today)
+          .reduce((sum, log) => sum + Number(log.minutes || 0), 0);
+        return `
+          <span>今日<br>${Math.round(todayMinutes)}分</span>
+          <span>直近7日<br>${Math.round(weekMinutes)}分</span>
+        `;
+      }
 
-        return weekdays.map((day, weekday) => {
-          const tasks = plannedTasks
-            .filter((task) => new Date(`${task.date}T00:00:00`).getDay() === weekday)
-            .slice(0, 5);
-          return `
-            <article class="material-card">
-              <header><strong>${day}曜の予定</strong><small>${tasks.length}件</small></header>
-              ${tasks.length === 0 ? `<p class="quiet">予定なし</p>` : `<div class="mini-list">${tasks.map(miniTaskRow).join("")}</div>`}
-            </article>
-          `;
-        }).join("");
+      function renderStudyLogs() {
+        const logs = studyTimeRecords().sort((a, b) => `${b.date}:${b.createdAt || ""}`.localeCompare(`${a.date}:${a.createdAt || ""}`));
+        if (logs.length === 0) return `<p class="quiet">まだ学習時間の記録はありません。</p>`;
+
+        return logs.slice(0, 20).map((log) => `
+          <div>
+            <b>${escapeHtml(formatDateLabel(log.date))}</b>
+            <span>${Math.round(Number(log.minutes || 0))}分 ${escapeHtml(log.label || "")}</span>
+            <small>
+              ${log.source === "manual" ? `<button type="button" data-study-log-delete="${escapeHtml(log.id)}">削除</button>` : "完了記録"}
+            </small>
+          </div>
+        `).join("");
+      }
+
+      function studyTimeRecords() {
+        const manualLogs = (planner.studyLogs || []).map((log) => ({ ...log, source: "manual" }));
+        const taskLogs = completionRecords().map((record) => ({
+          id: `task-time:${record.key}`,
+          date: record.date,
+          minutes: record.actualMinutes || record.estimatedMinutes || 0,
+          label: record.partial ? "途中保存" : "完了登録",
+          createdAt: record.completedAt,
+          source: "task"
+        }));
+        return [...manualLogs, ...taskLogs];
       }
 
       function miniTaskRow(task) {
@@ -1778,10 +1858,11 @@
 
       function completedTaskRow(record) {
         const note = record.partial ? `途中 ${record.rangeStart}〜${record.rangeEnd} / 予定 ${record.plannedRangeEnd}` : `${record.rangeStart}〜${record.rangeEnd}`;
+        const actual = record.actualMinutes ? ` / 実績 ${Math.round(record.actualMinutes)}分` : "";
         return `
           <div class="mini-row">
             <b>${escapeHtml(formatDateLabel(record.date))}</b>
-            <span>${escapeHtml(note)}${escapeHtml(record.unitType)} / ${escapeHtml(record.completedAtLabel || "")}</span>
+            <span>${escapeHtml(note)}${escapeHtml(record.unitType)}${escapeHtml(actual)} / ${escapeHtml(record.completedAtLabel || "")}</span>
           </div>
         `;
       }
@@ -1827,6 +1908,10 @@
               <label class="task-progress">
                 ここまで
                 <input type="number" min="${task.rangeStart}" max="${task.rangeEnd}" step="0.1" value="${task.rangeEnd}" data-partial-value />
+              </label>
+              <label class="task-progress">
+                かかった時間
+                <input type="number" min="1" step="1" value="${Math.max(1, Math.round(task.estimatedMinutes))}" data-actual-minutes />
               </label>
               <button class="progress-action" type="button" data-partial-task="${escapeHtml(key)}">途中保存</button>
               <span>予定 ${task.standardQty}</span>
@@ -1878,7 +1963,7 @@
         ].join("|");
       }
 
-      function completeTask(task, completedUntil) {
+      function completeTask(task, completedUntil, actualMinutes) {
         const material = planner.materials.find((item) => item.id === task.materialId);
         if (!material) return false;
 
@@ -1892,6 +1977,7 @@
 
         const key = taskCompletionKey(task);
         const ratio = (doneUntil - task.rangeStart) / Math.max(0.001, task.rangeEnd - task.rangeStart);
+        const minutes = Math.max(1, Math.round(Number(actualMinutes || task.estimatedMinutes * ratio)));
         planner.completedTasks = planner.completedTasks || {};
         planner.completedTasks[key] = {
           key,
@@ -1906,6 +1992,7 @@
           rangeEnd: doneUntil,
           plannedRangeEnd: task.rangeEnd,
           estimatedMinutes: Math.round(task.estimatedMinutes * ratio),
+          actualMinutes: minutes,
           partial: doneUntil < task.rangeEnd,
           completedAt: new Date().toISOString()
         };
@@ -1916,6 +2003,11 @@
         savePlanner();
         render();
         return true;
+      }
+
+      function actualMinutesFromCard(card, task) {
+        const value = Number(card?.querySelector("[data-actual-minutes]")?.value);
+        return Number.isFinite(value) && value > 0 ? value : Math.max(1, Math.round(task.estimatedMinutes));
       }
 
       function formatDateLabel(date) {
@@ -2038,6 +2130,16 @@
         };
       }
 
+      function studyLogFromForm(data, id) {
+        return {
+          id,
+          date: formValue(data, "date") || currentDateISO(),
+          minutes: Math.max(1, Math.round(formNumber(data, "minutes"))),
+          label: formValue(data, "label"),
+          createdAt: new Date().toISOString()
+        };
+      }
+
       function fillMaterialForm(material) {
         const form = document.getElementById("material-form");
         setField(form, "subject", material.subject);
@@ -2151,7 +2253,7 @@
         resetMaterialEditing();
         savePlanner();
         render();
-        document.querySelector('[data-panel="today"]').click();
+        document.querySelector('[data-panel="materials"]').click();
       });
 
       document.getElementById("schedule-form").addEventListener("submit", (event) => {
@@ -2168,7 +2270,21 @@
         resetScheduleEditing();
         savePlanner();
         render();
-        document.querySelector('[data-panel="today"]').click();
+        document.querySelector('[data-panel="schedule"]').click();
+      });
+
+      document.getElementById("study-log-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        planner.studyLogs = planner.studyLogs || [];
+        planner.studyLogs.push(studyLogFromForm(data, createId("study-log")));
+        form.reset();
+        form.elements.date.value = currentDateISO();
+        form.elements.minutes.value = 60;
+        savePlanner();
+        render();
+        document.querySelector('[data-panel="schedule"]').click();
       });
 
       document.getElementById("material-list").addEventListener("click", (event) => {
@@ -2213,13 +2329,22 @@
         }
       });
 
+      document.getElementById("study-log-list").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-study-log-delete]");
+        if (!button) return;
+        planner.studyLogs = (planner.studyLogs || []).filter((log) => log.id !== button.dataset.studyLogDelete);
+        savePlanner();
+        render();
+      });
+
       document.getElementById("today-panel").addEventListener("change", (event) => {
         const checkbox = event.target.closest("[data-complete-task]");
         if (!checkbox) return;
         if (!checkbox.checked) return;
         const task = visibleTasksByKey.get(checkbox.dataset.completeTask);
         if (!task) return;
-        completeTask(task, task.rangeEnd);
+        const card = checkbox.closest(".task-card");
+        completeTask(task, task.rangeEnd, actualMinutesFromCard(card, task));
       });
 
       document.getElementById("today-panel").addEventListener("click", (event) => {
@@ -2229,7 +2354,7 @@
         const card = button.closest(".task-card");
         const input = card?.querySelector("[data-partial-value]");
         if (!task || !input) return;
-        completeTask(task, input.value);
+        completeTask(task, input.value, actualMinutesFromCard(card, task));
       });
 
       document.getElementById("cancel-material-edit").addEventListener("click", resetMaterialEditing);
