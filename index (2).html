@@ -74,6 +74,15 @@
         display: none !important;
       }
 
+      body[data-active-panel="today"] #materials-panel,
+      body[data-active-panel="today"] #schedule-panel,
+      body[data-active-panel="materials"] #today-panel,
+      body[data-active-panel="materials"] #schedule-panel,
+      body[data-active-panel="schedule"] #today-panel,
+      body[data-active-panel="schedule"] #materials-panel {
+        display: none !important;
+      }
+
       html {
         background: var(--background);
       }
@@ -933,7 +942,7 @@
 
       .log-summary {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 8px;
         margin-top: 12px;
       }
@@ -984,6 +993,10 @@
 
         .thresholds {
           grid-template-columns: repeat(3, minmax(74px, 1fr));
+        }
+
+        .log-summary {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .today-band {
@@ -1054,14 +1067,14 @@
       }
     </style>
   </head>
-  <body>
+  <body data-active-panel="today">
     <main class="shell">
       <section class="topbar" aria-label="Application summary">
         <div>
           <p class="eyebrow">Prototype</p>
           <h1>受験伴走システム</h1>
         </div>
-        <div class="sync-pill">コード引き継ぎ</div>
+        <div class="sync-pill">Build 2026-08-10 time-v1</div>
       </section>
 
       <nav class="segmented" aria-label="Primary views">
@@ -1811,9 +1824,15 @@
         const weekMinutes = logs
           .filter((log) => log.date >= weekStart && log.date <= today)
           .reduce((sum, log) => sum + Number(log.minutes || 0), 0);
+        const totalMinutes = logs.reduce((sum, log) => sum + Number(log.minutes || 0), 0);
+        const automaticMinutes = logs
+          .filter((log) => log.source === "task")
+          .reduce((sum, log) => sum + Number(log.minutes || 0), 0);
         return `
-          <span>今日<br>${Math.round(todayMinutes)}分</span>
-          <span>直近7日<br>${Math.round(weekMinutes)}分</span>
+          <span>今日<br>${escapeHtml(minutesText(todayMinutes))}</span>
+          <span>直近7日<br>${escapeHtml(minutesText(weekMinutes))}</span>
+          <span>累積<br>${escapeHtml(minutesText(totalMinutes))}</span>
+          <span>自動入力<br>${escapeHtml(minutesText(automaticMinutes))}</span>
         `;
       }
 
@@ -1824,9 +1843,9 @@
         return logs.slice(0, 20).map((log) => `
           <div>
             <b>${escapeHtml(formatDateLabel(log.date))}</b>
-            <span>${Math.round(Number(log.minutes || 0))}分 ${escapeHtml(log.label || "")}</span>
+            <span>${escapeHtml(minutesText(log.minutes || 0))} ${escapeHtml(log.label || "")}</span>
             <small>
-              ${log.source === "manual" ? `<button type="button" data-study-log-delete="${escapeHtml(log.id)}">削除</button>` : "完了記録"}
+              ${log.source === "manual" ? `<button type="button" data-study-log-delete="${escapeHtml(log.id)}">削除</button>` : "自動入力"}
             </small>
           </div>
         `).join("");
@@ -1838,7 +1857,7 @@
           id: `task-time:${record.key}`,
           date: record.date,
           minutes: record.actualMinutes || record.estimatedMinutes || 0,
-          label: record.partial ? "途中保存" : "完了登録",
+          label: record.partial ? "途中保存から自動入力" : "完了から自動入力",
           createdAt: record.completedAt,
           source: "task"
         }));
@@ -2021,6 +2040,15 @@
       function timeLabel(value) {
         const date = new Date(value);
         return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+      }
+
+      function minutesText(value) {
+        const minutes = Math.max(0, Math.round(Number(value || 0)));
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        if (hours <= 0) return `${rest}分`;
+        if (rest === 0) return `${hours}時間`;
+        return `${hours}時間${rest}分`;
       }
 
       function addRange(map, materialId, start, end) {
@@ -2231,6 +2259,7 @@
         button.addEventListener("click", () => {
           document.querySelectorAll("[data-panel]").forEach((item) => item.classList.remove("active"));
           button.classList.add("active");
+          document.body.dataset.activePanel = button.dataset.panel;
           for (const id of ["today-panel", "materials-panel", "schedule-panel"]) {
             document.getElementById(id).hidden = id !== `${button.dataset.panel}-panel`;
           }
