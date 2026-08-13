@@ -1074,7 +1074,7 @@
           <p class="eyebrow">Prototype</p>
           <h1>受験伴走システム</h1>
         </div>
-        <div class="sync-pill">Build 2026-08-13 early-log-v1</div>
+        <div class="sync-pill">Build 2026-08-13 history-migrate-v1</div>
       </section>
 
       <nav class="segmented" aria-label="Primary views">
@@ -1338,6 +1338,7 @@
         studyLogs: []
       };
 
+      let pendingMigrationSave = false;
       let planner = loadPlanner();
       let editingMaterialId = "";
       let editingScheduleId = "";
@@ -1428,7 +1429,17 @@
       function loadPlanner() {
         const saved = localStorage.getItem(storageKey);
         const loaded = saved ? JSON.parse(saved) : structuredClone(seedInput);
+        const normalized = normalizePlannerData(loaded);
+        if (normalized.changed) pendingMigrationSave = true;
+        return normalized.planner;
+      }
+
+      function normalizePlannerData(source) {
+        const loaded = source && typeof source === "object" ? source : structuredClone(seedInput);
+        const migratedCompleted = migrateCompletedTasks(loaded.completedTasks);
         return {
+          changed: migratedCompleted.changed,
+          planner: {
           ...seedInput,
           ...loaded,
           today: currentDateISO(),
@@ -1442,9 +1453,44 @@
             ? loaded.materials.map((material) => ({ ...material, weekdays: normalizeMaterialWeekdays(material) }))
             : [],
           existingTasks: Array.isArray(loaded.existingTasks) ? loaded.existingTasks : [],
-          completedTasks: loaded.completedTasks && typeof loaded.completedTasks === "object" ? loaded.completedTasks : {},
+          completedTasks: migratedCompleted.completedTasks,
           studyLogs: Array.isArray(loaded.studyLogs) ? loaded.studyLogs : []
+          }
         };
+      }
+
+      function migrateCompletedTasks(completedTasks) {
+        if (!completedTasks || typeof completedTasks !== "object") return { completedTasks: {}, changed: false };
+
+        let changed = false;
+        const migrated = {};
+        for (const [key, record] of Object.entries(completedTasks)) {
+          if (!record || typeof record !== "object" || !record.completedAt || record.recordType === "material_log" || record.scheduledDate) {
+            migrated[key] = record;
+            continue;
+          }
+
+          const actualDate = dateFromTimestamp(record.completedAt);
+          if (!actualDate) {
+            migrated[key] = record;
+            continue;
+          }
+
+          migrated[key] = {
+            ...record,
+            scheduledDate: record.date || actualDate,
+            date: actualDate
+          };
+          changed = true;
+        }
+
+        return { completedTasks: migrated, changed };
+      }
+
+      function dateFromTimestamp(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return localDateISO(date);
       }
 
       function savePlanner() {
@@ -1452,6 +1498,8 @@
         localStorage.setItem(storageKey, JSON.stringify(planner));
         window.dispatchEvent(new CustomEvent("jukenbanso:planner-saved"));
       }
+
+      if (pendingMigrationSave) savePlanner();
 
       function planStudy(input) {
         input.today = currentDateISO();
@@ -2673,8 +2721,8 @@
       window.jukenbansoApp = {
         getPlanner: () => structuredClone(planner),
         setPlanner(nextPlanner) {
-          planner = structuredClone(nextPlanner);
-          localStorage.setItem(storageKey, JSON.stringify(planner));
+          planner = normalizePlannerData(nextPlanner).planner;
+          savePlanner();
           render();
         },
         getTheme: loadTheme,
