@@ -1074,7 +1074,7 @@
           <p class="eyebrow">Prototype</p>
           <h1>受験伴走システム</h1>
         </div>
-        <div class="sync-pill">Build 2026-08-12 material-log-v1</div>
+        <div class="sync-pill">Build 2026-08-13 early-log-v1</div>
       </section>
 
       <nav class="segmented" aria-label="Primary views">
@@ -1220,10 +1220,13 @@
                 <p class="eyebrow">Task</p>
                 <h3>登録済み課題を終わらせる</h3>
               </div>
-              <label>
-                課題
-                <select name="taskKey" id="study-task-select"></select>
-              </label>
+              <div class="form-grid">
+                <label>記録日<input id="study-task-date" name="date" type="date" required /></label>
+                <label>
+                  課題
+                  <select name="taskKey" id="study-task-select"></select>
+                </label>
+              </div>
               <div class="form-grid">
                 <label>ここまで<input id="study-task-progress" name="completedUntil" min="0" step="0.1" type="number" /></label>
                 <label>かかった時間<input id="study-task-minutes" name="actualMinutes" min="1" step="1" type="number" /></label>
@@ -1733,8 +1736,10 @@
         document.getElementById("soft-end").value = planner.settings.softEndTime;
         document.getElementById("hard-stop").value = planner.settings.hardStopTime;
         const studyLogDate = document.querySelector('#study-log-form [name="date"]');
+        const studyTaskDate = document.getElementById("study-task-date");
         const studyMaterialDate = document.getElementById("study-material-date");
         if (studyLogDate && !studyLogDate.value) studyLogDate.value = planner.today;
+        if (studyTaskDate && !studyTaskDate.value) studyTaskDate.value = planner.today;
         if (studyMaterialDate && !studyMaterialDate.value) studyMaterialDate.value = planner.today;
         renderStudyTaskChoices(plannedTasks);
         renderStudyMaterialChoices();
@@ -2007,6 +2012,9 @@
       }
 
       function completedTaskRow(record) {
+        const scheduled = record.scheduledDate && record.scheduledDate !== record.date
+          ? ` / 予定 ${formatDateLabel(record.scheduledDate)}`
+          : "";
         const note = record.recordType === "material_log"
           ? `教材記録 ${record.rangeStart}〜${record.rangeEnd}`
           : record.partial ? `途中 ${record.rangeStart}〜${record.rangeEnd} / 予定 ${record.plannedRangeEnd}` : `${record.rangeStart}〜${record.rangeEnd}`;
@@ -2014,7 +2022,7 @@
         return `
           <div class="mini-row">
             <b>${escapeHtml(formatDateLabel(record.date))}</b>
-            <span>${escapeHtml(note)}${escapeHtml(record.unitType)}${escapeHtml(actual)} / ${escapeHtml(record.completedAtLabel || "")}</span>
+            <span>${escapeHtml(note)}${escapeHtml(record.unitType)}${escapeHtml(actual)}${escapeHtml(scheduled)} / ${escapeHtml(record.completedAtLabel || "")}</span>
           </div>
         `;
       }
@@ -2115,7 +2123,7 @@
         ].join("|");
       }
 
-      function completeTask(task, completedUntil, actualMinutes) {
+      function completeTask(task, completedUntil, actualMinutes, completedDate = currentDateISO()) {
         const material = planner.materials.find((item) => item.id === task.materialId);
         if (!material) return false;
 
@@ -2133,7 +2141,8 @@
         planner.completedTasks = planner.completedTasks || {};
         planner.completedTasks[key] = {
           key,
-          date: task.date,
+          date: completedDate || currentDateISO(),
+          scheduledDate: task.date,
           slotId: task.slotId,
           blockLabel: task.blockLabel,
           materialId: task.materialId,
@@ -2508,7 +2517,7 @@
           alert("完了する課題を選んでください。");
           return;
         }
-        completeTask(task, formNumber(data, "completedUntil"), formNumber(data, "actualMinutes"));
+        completeTask(task, formNumber(data, "completedUntil"), formNumber(data, "actualMinutes"), formValue(data, "date"));
         document.querySelector('[data-panel="schedule"]').click();
       });
 
