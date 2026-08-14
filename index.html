@@ -1074,7 +1074,7 @@
           <p class="eyebrow">Prototype</p>
           <h1>受験伴走システム</h1>
         </div>
-        <div class="sync-pill">Build 2026-08-13 history-migrate-v1</div>
+        <div class="sync-pill">Build 2026-08-14 study-range-v1</div>
       </section>
 
       <nav class="segmented" aria-label="Primary views">
@@ -1236,7 +1236,7 @@
             <form class="inline-log-form" id="study-material-form">
               <div>
                 <p class="eyebrow">Material</p>
-                <h3>教材から学習量を記録</h3>
+                <h3>教材から学習範囲を記録</h3>
               </div>
               <div class="form-grid">
                 <label>日付<input id="study-material-date" name="date" type="date" required /></label>
@@ -1246,10 +1246,18 @@
                 </label>
               </div>
               <div class="form-grid">
-                <label>学習量<input id="study-material-quantity" name="quantity" min="0.1" step="0.1" type="number" /></label>
+                <label>開始位置<input id="study-material-start" name="rangeStart" min="0" step="0.1" type="number" /></label>
+                <label>終了位置<input id="study-material-end" name="rangeEnd" min="0" step="0.1" type="number" /></label>
+                <label>
+                  記録種別
+                  <select id="study-material-mode" name="progressMode">
+                    <option value="advance">進捗に反映</option>
+                    <option value="review">復習として記録</option>
+                  </select>
+                </label>
                 <label>学習時間<input id="study-material-minutes" name="actualMinutes" min="1" step="1" type="number" value="30" /></label>
               </div>
-              <button class="primary-action" type="submit">教材の学習を記録</button>
+              <button class="primary-action" type="submit">教材の範囲を記録</button>
             </form>
             <div id="study-log-summary" class="log-summary"></div>
             <div class="compact-list" id="study-log-list"></div>
@@ -1992,30 +2000,37 @@
 
       function renderStudyMaterialChoices() {
         const select = document.getElementById("study-material-select");
-        const quantity = document.getElementById("study-material-quantity");
+        const start = document.getElementById("study-material-start");
+        const end = document.getElementById("study-material-end");
+        const mode = document.getElementById("study-material-mode");
         const minutes = document.getElementById("study-material-minutes");
         const submit = document.querySelector("#study-material-form button[type='submit']");
-        if (!select || !quantity || !minutes || !submit) return;
+        if (!select || !start || !end || !mode || !minutes || !submit) return;
 
-        const materials = planner.materials.filter((material) => material.active !== false && Number(material.currentValue) < Number(material.endValue));
+        const materials = planner.materials.filter((material) => material.active !== false);
         const previous = select.value;
         if (materials.length === 0) {
           select.innerHTML = `<option value="">記録できる教材がありません</option>`;
           select.disabled = true;
-          quantity.value = "";
+          start.value = "";
+          end.value = "";
           minutes.value = "";
-          quantity.disabled = true;
+          start.disabled = true;
+          end.disabled = true;
+          mode.disabled = true;
           minutes.disabled = true;
           submit.disabled = true;
           return;
         }
 
         select.disabled = false;
-        quantity.disabled = false;
+        start.disabled = false;
+        end.disabled = false;
+        mode.disabled = false;
         minutes.disabled = false;
         submit.disabled = false;
         select.innerHTML = materials.map((material) => `
-          <option value="${escapeHtml(material.id)}">${escapeHtml(material.name)} / 現在 ${material.currentValue}${escapeHtml(material.unitType)}</option>
+          <option value="${escapeHtml(material.id)}">${escapeHtml(material.name)} / 現在 ${material.currentValue}${escapeHtml(material.unitType)} / 終了 ${material.endValue}${escapeHtml(material.unitType)}</option>
         `).join("");
         if (previous && materials.some((material) => material.id === previous)) select.value = previous;
         syncStudyMaterialFields();
@@ -2023,16 +2038,40 @@
 
       function syncStudyMaterialFields() {
         const select = document.getElementById("study-material-select");
-        const quantity = document.getElementById("study-material-quantity");
+        const start = document.getElementById("study-material-start");
+        const end = document.getElementById("study-material-end");
+        const mode = document.getElementById("study-material-mode");
         const minutes = document.getElementById("study-material-minutes");
-        if (!select || !quantity || !minutes) return;
+        if (!select || !start || !end || !mode || !minutes) return;
         const material = planner.materials.find((item) => item.id === select.value);
         if (!material) return;
-        const remaining = Math.max(0, Number(material.endValue) - Number(material.currentValue));
-        const chunk = Math.min(remaining, Math.max(Number(material.minChunk || 1), 0.1));
-        quantity.max = remaining;
-        quantity.value = roundQty(chunk);
-        minutes.value = Math.max(1, Math.round(chunk * minutesPerUnit(material)));
+        const min = Number.isFinite(Number(material.startValue)) ? Number(material.startValue) : 0;
+        const max = Number.isFinite(Number(material.endValue)) ? Number(material.endValue) : min;
+        const current = Math.min(max, Math.max(min, Number(material.currentValue) || min));
+        const remaining = Math.max(0, max - current);
+        const chunk = remaining > 0 ? Math.min(remaining, Math.max(Number(material.minChunk || 1), 0.1)) : Math.max(0.1, Math.min(Math.max(Number(material.minChunk || 1), 0.1), Math.max(0.1, max - min)));
+        const defaultStart = remaining > 0 ? current : Math.max(min, roundQty(max - chunk));
+        const defaultEnd = remaining > 0 ? roundQty(current + chunk) : max;
+        start.min = min;
+        start.max = max;
+        end.min = min;
+        end.max = max;
+        start.value = roundQty(defaultStart);
+        end.value = roundQty(defaultEnd);
+        mode.value = remaining > 0 ? "advance" : "review";
+        syncStudyMaterialMinutesFromRange();
+      }
+
+      function syncStudyMaterialMinutesFromRange() {
+        const select = document.getElementById("study-material-select");
+        const start = document.getElementById("study-material-start");
+        const end = document.getElementById("study-material-end");
+        const minutes = document.getElementById("study-material-minutes");
+        if (!select || !start || !end || !minutes) return;
+        const material = planner.materials.find((item) => item.id === select.value);
+        if (!material) return;
+        const amount = Math.max(0, Number(end.value) - Number(start.value));
+        if (amount > 0) minutes.value = Math.max(1, Math.round(amount * minutesPerUnit(material)));
       }
 
       function studyTimeRecords() {
@@ -2042,7 +2081,7 @@
           date: record.date,
           minutes: record.actualMinutes || record.estimatedMinutes || 0,
           label: record.recordType === "material_log"
-            ? "教材記録から自動入力"
+            ? record.advancesProgress === false ? "復習記録から自動入力" : "教材記録から自動入力"
             : record.partial ? "途中保存から自動入力" : "完了から自動入力",
           createdAt: record.completedAt,
           source: "task"
@@ -2064,7 +2103,7 @@
           ? ` / 予定 ${formatDateLabel(record.scheduledDate)}`
           : "";
         const note = record.recordType === "material_log"
-          ? `教材記録 ${record.rangeStart}〜${record.rangeEnd}`
+          ? `${record.advancesProgress === false ? "復習記録" : "教材記録"} ${record.rangeStart}〜${record.rangeEnd}`
           : record.partial ? `途中 ${record.rangeStart}〜${record.rangeEnd} / 予定 ${record.plannedRangeEnd}` : `${record.rangeStart}〜${record.rangeEnd}`;
         const actual = record.actualMinutes ? ` / 実績 ${Math.round(record.actualMinutes)}分` : "";
         return `
@@ -2214,26 +2253,27 @@
         return true;
       }
 
-      function recordMaterialStudy(materialId, date, quantity, actualMinutes) {
+      function recordMaterialStudy(materialId, date, rangeStart, rangeEnd, progressMode, actualMinutes) {
         const material = planner.materials.find((item) => item.id === materialId);
         if (!material) {
           alert("記録する教材を選んでください。");
           return false;
         }
 
-        const amount = Number(quantity);
-        if (!Number.isFinite(amount) || amount <= 0) {
-          alert("学習量を入力してください。");
+        const min = Number.isFinite(Number(material.startValue)) ? Number(material.startValue) : 0;
+        const max = Number.isFinite(Number(material.endValue)) ? Number(material.endValue) : min;
+        const start = roundQty(Number(rangeStart));
+        const end = roundQty(Number(rangeEnd));
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+          alert("学習した範囲を開始位置と終了位置で入力してください。");
+          return false;
+        }
+        if (start < min || end > max) {
+          alert("教材の開始位置から終了位置までの範囲で入力してください。");
           return false;
         }
 
-        const start = Number(material.currentValue) || 0;
-        const end = roundQty(Math.min(Number(material.endValue), start + amount));
-        if (end <= start) {
-          alert("この教材は終了位置まで進んでいます。");
-          return false;
-        }
-
+        const advancesProgress = progressMode !== "review";
         const minutes = Math.max(1, Math.round(Number(actualMinutes || (end - start) * minutesPerUnit(material))));
         const key = createId("material-study");
         planner.completedTasks = planner.completedTasks || {};
@@ -2242,7 +2282,7 @@
           recordType: "material_log",
           date: date || currentDateISO(),
           slotId: "material-log",
-          blockLabel: "教材から記録",
+          blockLabel: advancesProgress ? "教材から記録" : "復習として記録",
           materialId: material.id,
           materialName: material.name,
           subject: material.subject,
@@ -2252,12 +2292,15 @@
           plannedRangeEnd: end,
           estimatedMinutes: Math.round((end - start) * minutesPerUnit(material)),
           actualMinutes: minutes,
+          advancesProgress,
           partial: false,
           completedAt: new Date().toISOString()
         };
 
-        material.currentValue = end;
-        if (material.currentValue >= material.endValue) material.currentValue = material.endValue;
+        if (advancesProgress) {
+          material.currentValue = roundQty(Math.max(Number(material.currentValue) || min, end));
+          if (material.currentValue >= material.endValue) material.currentValue = material.endValue;
+        }
         savePlanner();
         render();
         return true;
@@ -2570,6 +2613,8 @@
       });
 
       document.getElementById("study-material-select").addEventListener("change", syncStudyMaterialFields);
+      document.getElementById("study-material-start").addEventListener("input", syncStudyMaterialMinutesFromRange);
+      document.getElementById("study-material-end").addEventListener("input", syncStudyMaterialMinutesFromRange);
 
       document.getElementById("study-material-form").addEventListener("submit", (event) => {
         event.preventDefault();
@@ -2577,7 +2622,9 @@
         recordMaterialStudy(
           formValue(data, "materialId"),
           formValue(data, "date"),
-          formNumber(data, "quantity"),
+          formNumber(data, "rangeStart"),
+          formNumber(data, "rangeEnd"),
+          formValue(data, "progressMode"),
           formNumber(data, "actualMinutes")
         );
         document.querySelector('[data-panel="schedule"]').click();
